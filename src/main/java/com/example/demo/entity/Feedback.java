@@ -1,39 +1,46 @@
 package com.example.demo.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
-import java.util.UUID;
+import org.hibernate.annotations.ColumnDefault;
+
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
-@NoArgsConstructor
 @Entity
 @Table(name = "feedback")
 public class Feedback {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    @Column(name = "feedback_id")
-    private UUID feedbackId;
+    @ColumnDefault("nextval('feedback_feedback_id_seq')")
+    @Column(name = "feedback_id", nullable = false)
+    private Long id;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "student_id", nullable = false)
+    private com.example.demo.entity.Student student;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "event_id", nullable = false)
+    private Event event;
 
     @Column(name = "rating")
-    private Integer rating;
+    private Short rating;
 
-    @Column(name = "comments", columnDefinition = "TEXT")
+    @Column(name = "comments", length = Integer.MAX_VALUE)
     private String comments;
 
-    @Column(name = "sentiment_label")
+    @Size(max = 30)
+    @Column(name = "sentiment_label", length = 30)
     private String sentimentLabel;
 
-    @Column(name = "sentiment_score")
-    private Float sentimentScore;
+    @ColumnDefault("now()")
+    @Column(name = "created_at")
+    private OffsetDateTime createdAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "student_id")
-    private Student student;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "event_id")
-    private Event event;
 }

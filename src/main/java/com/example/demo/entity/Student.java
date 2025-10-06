@@ -2,46 +2,47 @@ package com.example.demo.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
-import java.util.UUID;
+import org.hibernate.annotations.ColumnDefault;
+
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
-@NoArgsConstructor 
 @Entity
 @Table(name = "student")
 public class Student {
-
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    @Column(name = "student_id", updatable = false, nullable = false)
-    private UUID studentId;
+    @ColumnDefault("nextval('student_student_id_seq')")
+    @Column(name = "student_id", nullable = false)
+    private Long id;
 
     @NotNull
-    @Column(name = "cognito_sub", unique = true, nullable = false)
-    private String cognitoSub;
-    
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "university_id", nullable = false)
+    private com.example.demo.entity.University university;
+
+    @Size(max = 200)
     @NotNull
-    @Column(name = "email", unique = true, nullable = false)
+    @Column(name = "full_name", nullable = false, length = 200)
+    private String fullName;
+
+    @Size(max = 20)
+    @NotNull
+    @Column(name = "phone_number", nullable = false, length = 20)
+    private String phoneNumber;
+
+    @Size(max = 200)
+    @Column(name = "email", length = 200)
     private String email;
 
-    @NotNull
-    @Column(name = "name", nullable = false, length = 100)
-    private String name;
-    
-    @Column(name = "avatar_url", columnDefinition = "TEXT")
+    @Column(name = "avatar_url", length = Integer.MAX_VALUE)
     private String avatarUrl;
 
-    @NotNull
-    @Column(name = "qr_code_identifier", unique = true, nullable = false, length = 50)
-    private String qrCodeIdentifier;
+    @ColumnDefault("now()")
+    @Column(name = "created_at")
+    private OffsetDateTime createdAt;
 
-    @Column(name = "interests", columnDefinition = "TEXT")
-    private String interests;
-
-    @Column(name = "point_balance")
-    private Integer pointBalance;
-    
 }

@@ -1,52 +1,68 @@
 package com.example.demo.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 
-import java.sql.Timestamp;
-import java.util.UUID;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
-@NoArgsConstructor
 @Entity
 @Table(name = "event")
 public class Event {
-
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    @Column(name = "event_id")
-    private UUID eventId;
+    @ColumnDefault("nextval('event_event_id_seq')")
+    @Column(name = "event_id", nullable = false)
+    private Long id;
 
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "partner_id", nullable = false)
+    private com.example.demo.entity.Partner partner;
+
+    @Size(max = 200)
+    @NotNull
     @Column(name = "title", nullable = false, length = 200)
     private String title;
 
-    @Column(name = "description", columnDefinition = "TEXT")
+    @Column(name = "description", length = Integer.MAX_VALUE)
     private String description;
 
+    @NotNull
     @Column(name = "start_time", nullable = false)
-    private Timestamp startTime;
+    private OffsetDateTime startTime;
 
+    @NotNull
     @Column(name = "end_time", nullable = false)
-    private Timestamp endTime;
+    private OffsetDateTime endTime;
 
+    @Size(max = 200)
     @Column(name = "location", length = 200)
     private String location;
 
-    @Column(name = "type", length = 50)
-    private String type;
-
-    @Column(name = "status", length = 20)
-    private String status;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
-    private EventCategory category;
+    private com.example.demo.entity.EventCategory category;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "organizer_id")
-    private Organizer organizer;
+    @ColumnDefault("0")
+    @Column(name = "reward_per_checkin", precision = 18, scale = 2)
+    private BigDecimal rewardPerCheckin;
+
+    @ColumnDefault("0")
+    @Column(name = "total_budget_coin", precision = 18, scale = 2)
+    private BigDecimal totalBudgetCoin;
+
+    @Size(max = 30)
+    @Column(name = "status", length = 30)
+    private String status;
+
+    @ColumnDefault("now()")
+    @Column(name = "created_at")
+    private OffsetDateTime createdAt;
 
 }

@@ -11,25 +11,24 @@ import java.time.OffsetDateTime;
 @Getter
 @Setter
 @Entity
-@Table(name = "registration")
-public class Registration {
+@Table(name = "event_broadcast")
+public class EventBroadcast {
     @Id
-    @ColumnDefault("nextval('registration_registration_id_seq')")
-    @Column(name = "registration_id", nullable = false)
+    @ColumnDefault("nextval('event_broadcast_broadcast_id_seq')")
+    @Column(name = "broadcast_id", nullable = false)
     private Long id;
-
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "student_id", nullable = false)
-    private com.example.demo.entity.Student student;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
+    @NotNull
+    @Column(name = "message_content", nullable = false, length = Integer.MAX_VALUE)
+    private String messageContent;
+
     @ColumnDefault("now()")
-    @Column(name = "registered_at")
-    private OffsetDateTime registeredAt;
+    @Column(name = "sent_at")
+    private OffsetDateTime sentAt;
 
 }
