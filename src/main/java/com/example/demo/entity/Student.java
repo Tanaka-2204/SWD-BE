@@ -15,7 +15,8 @@ import java.time.OffsetDateTime;
 @Table(name = "student")
 public class Student {
     @Id
-    @ColumnDefault("nextval('student_student_id_seq')")
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "student_seq")
+    @SequenceGenerator(name = "student_seq", sequenceName = "student_student_id_seq", allocationSize = 1)
     @Column(name = "student_id", nullable = false)
     private Long id;
 
@@ -45,4 +46,10 @@ public class Student {
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
 
+        @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = OffsetDateTime.now();
+        }
+    }
 }
