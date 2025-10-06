@@ -3,7 +3,13 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
-
+### Security ###
+ .env
+ *.env
+ application-prod.properties.local
+ application-dev.properties.local
+ logs/
+ *.log
 ### STS ###
 .apt_generated
 .classpath
@@ -31,3 +37,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Others ###
+.DS_Store
