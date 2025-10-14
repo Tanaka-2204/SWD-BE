@@ -21,6 +21,9 @@ public class Student {
     @Column(name = "student_id", nullable = false)
     private Long id;
 
+    @Column(name = "cognito_sub", unique = true, nullable = false, updatable = false)
+    private String cognitoSub;
+    
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "university_id", nullable = false)

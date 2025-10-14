@@ -7,7 +7,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
-public class StudentCreateDTO {
+public class StudentProfileCompletionDTO {
+    
     @NotNull
     private Long universityId;
 
@@ -19,6 +20,5 @@ public class StudentCreateDTO {
     @VietnamesePhoneNumber
     private String phoneNumber;
 
-    private String email;
     private String avatarUrl;
 }

@@ -1,42 +1,15 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.StudentProfileUpdateRequest;
-import com.example.demo.entity.Student;
-import com.example.demo.exception.ResourceNotFoundException; 
-import com.example.demo.repository.StudentRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.example.demo.dto.request.StudentProfileCompletionDTO;
+import com.example.demo.dto.request.StudentProfileUpdateDTO;
+import com.example.demo.dto.response.StudentResponseDTO;
 
-@Service
-public class StudentService {
 
-    private static final Logger logger = LoggerFactory.getLogger(StudentService.class);
+public interface StudentService {
 
-    private final StudentRepository studentRepository;
+    StudentResponseDTO getStudentById(Long studentId);
 
-    public StudentService(StudentRepository studentRepository) {
-        this.studentRepository = studentRepository;
-    }
+    StudentResponseDTO completeProfile(String cognitoSub, String email, StudentProfileCompletionDTO dto);
 
-    @Transactional
-    public Student updateStudentProfile(String cognitoSub, StudentProfileUpdateRequest request) {
-        logger.info("Attempting to update profile for cognitoSub: {}", cognitoSub);
-
-        Student student = studentRepository.findByCognitoSub(cognitoSub)
-                .orElseThrow(() -> {
-                    logger.warn("Student not found with cognitoSub: {}", cognitoSub);
-                    return new ResourceNotFoundException("Student not found with cognitoSub: " + cognitoSub);
-                });
-
-        student.setName(request.getName());
-        student.setAvatarUrl(request.getAvatarUrl());
-        student.setInterests(request.getInterests());
-
-        Student updatedStudent = studentRepository.save(student);
-        logger.info("Successfully updated profile for studentId: {}", updatedStudent.getStudentId());
-        
-        return updatedStudent;
-    }
+    StudentResponseDTO updateMyProfile(String cognitoSub, StudentProfileUpdateDTO updateDTO);
 }
