@@ -1,5 +1,6 @@
 package com.example.demo.entity;
 
+import com.example.demo.validation.annotations.VietnamesePhoneNumber;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -14,15 +15,16 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "student")
 public class Student {
+
     @Id
-    @ColumnDefault("nextval('student_student_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "student_id", nullable = false)
     private Long id;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "university_id", nullable = false)
-    private com.example.demo.entity.University university;
+    private University university;
 
     @Size(max = 200)
     @NotNull
@@ -31,14 +33,15 @@ public class Student {
 
     @Size(max = 20)
     @NotNull
-    @Column(name = "phone_number", nullable = false, length = 20)
+    @Column(name = "phone_number", nullable = false, length = 20, unique = true)
+    @VietnamesePhoneNumber 
     private String phoneNumber;
 
     @Size(max = 200)
-    @Column(name = "email", length = 200)
+    @Column(name = "email", length = 200, unique = true) // Cân nhắc thêm unique = true
     private String email;
 
-    @Column(name = "avatar_url", length = Integer.MAX_VALUE)
+    @Column(name = "avatar_url") // Loại bỏ length
     private String avatarUrl;
 
     @ColumnDefault("now()")

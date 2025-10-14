@@ -14,8 +14,9 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "checkin")
 public class Checkin {
+
     @Id
-    @ColumnDefault("nextval('checkin_checkin_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // SỬA ĐỔI NÀY
     @Column(name = "checkin_id", nullable = false)
     private Long id;
 
@@ -27,7 +28,7 @@ public class Checkin {
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "event_id", nullable = false)
-    private com.example.demo.entity.Event event;
+    private Event event;
 
     @ColumnDefault("now()")
     @Column(name = "checkin_time")

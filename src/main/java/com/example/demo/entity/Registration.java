@@ -11,17 +11,20 @@ import java.time.OffsetDateTime;
 @Getter
 @Setter
 @Entity
-@Table(name = "registration")
+@Table(name = "registration", uniqueConstraints = { // THÊM uniqueConstraints
+        @UniqueConstraint(columnNames = { "student_id", "event_id" })
+})
 public class Registration {
+
     @Id
-    @ColumnDefault("nextval('registration_registration_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "registration_id", nullable = false)
     private Long id;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "student_id", nullable = false)
-    private com.example.demo.entity.Student student;
+    private Student student;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

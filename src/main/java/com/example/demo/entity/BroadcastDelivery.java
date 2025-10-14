@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-
 import java.time.OffsetDateTime;
 
 @Getter
@@ -15,20 +14,19 @@ import java.time.OffsetDateTime;
 @Table(name = "broadcast_delivery")
 public class BroadcastDelivery {
     @Id
-    @ColumnDefault("nextval('broadcast_delivery_delivery_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // THAY THẾ CÁI NÀY
     @Column(name = "delivery_id", nullable = false)
     private Long id;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "broadcast_id", nullable = false)
-    private com.example.demo.entity.EventBroadcast broadcast;
+    private EventBroadcast broadcast;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "student_id", nullable = false)
-    private com.example.demo.entity.Student student;
-
+    private Student student;
     @Size(max = 20)
     @Column(name = "status", length = 20)
     private String status;
