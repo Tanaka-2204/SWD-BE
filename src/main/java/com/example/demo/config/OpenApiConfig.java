@@ -19,9 +19,9 @@ import org.springframework.context.annotation.Configuration;
         description = "This API provides endpoints for managing the Student Loyalty Platform, " +
                       "including events, wallets, and user profiles.",
         contact = @Contact(
-            name = "Your Name / Team Name",
-            email = "your.email@example.com"
-            //url = "https://your-project-url.com"
+            name = "Hehe",
+            email = "khoabdse170432@fpt.edu.vn",
+            url = "sche-management.vercel.app"
         ),
         license = @License(
             name = "Apache 2.0",

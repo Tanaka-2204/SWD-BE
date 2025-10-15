@@ -10,8 +10,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/partners")
@@ -23,14 +23,16 @@ public class PartnerController {
         this.partnerService = partnerService;
     }
 
-    @Operation(summary = "Register a new partner", description = "Creates a new partner and an associated wallet. This might be an admin-only endpoint.")
+    @Operation(summary = "Admin creates a new partner", description = "Creates a new partner and an associated wallet. This endpoint requires ADMIN role.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Partner created successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid input data"),
+            @ApiResponse(responseCode = "403", description = "Forbidden: User does not have ADMIN role"),                                                                                          
             @ApiResponse(responseCode = "409", description = "Partner with the same name already exists")
     })
     @PostMapping
-    public ResponseEntity<PartnerResponseDTO> registerPartner(@Valid @RequestBody PartnerRequestDTO requestDTO) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<PartnerResponseDTO> createPartner(@Valid @RequestBody PartnerRequestDTO requestDTO) {
         PartnerResponseDTO newPartner = partnerService.createPartner(requestDTO);
         return new ResponseEntity<>(newPartner, HttpStatus.CREATED);
     }
