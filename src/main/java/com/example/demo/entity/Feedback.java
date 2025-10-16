@@ -14,15 +14,16 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "feedback")
 public class Feedback {
+
     @Id
-    @ColumnDefault("nextval('feedback_feedback_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "feedback_id", nullable = false)
     private Long id;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "student_id", nullable = false)
-    private com.example.demo.entity.Student student;
+    private Student student;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -32,7 +33,7 @@ public class Feedback {
     @Column(name = "rating")
     private Short rating;
 
-    @Column(name = "comments", length = Integer.MAX_VALUE)
+    @Column(name = "comments") // Loại bỏ length
     private String comments;
 
     @Size(max = 30)

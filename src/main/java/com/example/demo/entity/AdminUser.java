@@ -2,6 +2,8 @@ package com.example.demo.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Size;
@@ -17,7 +19,7 @@ import java.time.OffsetDateTime;
 @Table(name = "admin_user")
 public class AdminUser {
     @Id
-    @ColumnDefault("nextval('admin_user_admin_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // SỬA ĐỔI NÀY
     @Column(name = "admin_id", nullable = false)
     private Long id;
 

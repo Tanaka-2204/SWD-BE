@@ -2,6 +2,8 @@ package com.example.demo.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Size;
@@ -17,7 +19,7 @@ import java.time.OffsetDateTime;
 @Table(name = "ai_query_log")
 public class AiQueryLog {
     @Id
-    @ColumnDefault("nextval('ai_query_log_query_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // SỬA ĐỔI NÀY
     @Column(name = "query_id", nullable = false)
     private Long id;
 
@@ -28,10 +30,10 @@ public class AiQueryLog {
     @Column(name = "actor_id")
     private Long actorId;
 
-    @Column(name = "question", length = Integer.MAX_VALUE)
+    @Column(name = "question") // Chỉ định tên cột là đủ
     private String question;
 
-    @Column(name = "answer", length = Integer.MAX_VALUE)
+    @Column(name = "answer")
     private String answer;
 
     @ColumnDefault("now()")

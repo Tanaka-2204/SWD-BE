@@ -15,8 +15,9 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "wallet_transaction")
 public class WalletTransaction {
+
     @Id
-    @ColumnDefault("nextval('wallet_transaction_txn_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "txn_id", nullable = false)
     private Long id;
 
@@ -45,7 +46,7 @@ public class WalletTransaction {
     private Long referenceId;
 
     @Size(max = 120)
-    @Column(name = "idempotency_key", length = 120)
+    @Column(name = "idempotency_key", length = 120, unique = true) // THÊM unique = true
     private String idempotencyKey;
 
     @ColumnDefault("now()")

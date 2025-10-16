@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -16,19 +15,19 @@ import java.util.Map;
 @Table(name = "kb_chunk")
 public class KbChunk {
     @Id
-    @ColumnDefault("nextval('kb_chunk_chunk_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "chunk_id", nullable = false)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "source_id")
-    private com.example.demo.entity.KbSource source;
+    private KbSource source;
 
     @NotNull
-    @Column(name = "text", nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = "text", nullable = false)
     private String text;
 
-    @Column(name = "embedding", length = Integer.MAX_VALUE)
+    @Column(name = "embedding")
     private String embedding;
 
     @Column(name = "metadata")

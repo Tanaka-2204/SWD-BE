@@ -14,8 +14,9 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "event_funding")
 public class EventFunding {
+
     @Id
-    @ColumnDefault("nextval('event_funding_funding_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "funding_id", nullable = false)
     private Long id;
 
@@ -27,7 +28,7 @@ public class EventFunding {
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "partner_id", nullable = false)
-    private com.example.demo.entity.Partner partner;
+    private Partner partner;
 
     @NotNull
     @Column(name = "amount_coin", nullable = false, precision = 18, scale = 2)

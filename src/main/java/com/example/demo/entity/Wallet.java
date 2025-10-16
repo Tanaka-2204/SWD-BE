@@ -1,7 +1,11 @@
 package com.example.demo.entity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
@@ -16,10 +20,13 @@ import java.time.OffsetDateTime;
 @Getter
 @Setter
 @Entity
-@Table(name = "wallet")
+@Table(name = "wallet", uniqueConstraints = { // THÊM uniqueConstraints
+        @UniqueConstraint(columnNames = { "owner_type", "owner_id", "currency" })
+})
 public class Wallet {
+
     @Id
-    @ColumnDefault("nextval('wallet_wallet_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "wallet_id", nullable = false)
     private Long id;
 
@@ -44,6 +51,7 @@ public class Wallet {
     @NotNull
     @ColumnDefault("0")
     @Column(name = "version", nullable = false)
+    @Version // THÊM VERSION ANNOTATION NÀY
     private Integer version;
 
     @ColumnDefault("now()")
