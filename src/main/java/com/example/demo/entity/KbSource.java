@@ -2,6 +2,8 @@ package com.example.demo.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Size;
@@ -16,8 +18,9 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "kb_source")
 public class KbSource {
+
     @Id
-    @ColumnDefault("nextval('kb_source_source_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "source_id", nullable = false)
     private Long id;
 
@@ -29,7 +32,7 @@ public class KbSource {
     @Column(name = "type", length = 50)
     private String type;
 
-    @Column(name = "url", length = Integer.MAX_VALUE)
+    @Column(name = "url") // Loại bỏ length
     private String url;
 
     @ColumnDefault("now()")

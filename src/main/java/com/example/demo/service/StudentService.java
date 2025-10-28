@@ -1,29 +1,15 @@
 package com.example.demo.service;
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.example.demo.dto.request.StudentProfileCompletionDTO;
+import com.example.demo.dto.request.StudentProfileUpdateDTO;
+import com.example.demo.dto.response.StudentResponseDTO;
 
-@Service
-public class StudentService {
 
-    private final StudentRepository studentRepository;
+public interface StudentService {
 
-    public StudentService(StudentRepository studentRepository) {
-        this.studentRepository = studentRepository;
-    }
+    StudentResponseDTO getStudentById(Long studentId);
 
-    @Transactional
-    public Student updateStudentProfile(String cognitoSub, StudentProfileUpdateRequest request) {
-        // Tìm sinh viên bằng cognitoSub, nếu không thấy sẽ báo lỗi
-        Student student = studentRepository.findByCognitoSub(cognitoSub)
-                .orElseThrow(() -> new RuntimeException("Student not found with cognitoSub: " + cognitoSub));
+    StudentResponseDTO completeProfile(String cognitoSub, String email, StudentProfileCompletionDTO dto);
 
-        // Cập nhật các trường được phép
-        student.setName(request.getName());
-        student.setAvatarUrl(request.getAvatarUrl());
-        student.setInterests(request.getInterests());
-
-        // Lưu lại vào database
-        return studentRepository.save(student);
-    }
+    StudentResponseDTO updateMyProfile(String cognitoSub, StudentProfileUpdateDTO updateDTO);
 }

@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
@@ -16,21 +15,21 @@ import java.time.OffsetDateTime;
 @Table(name = "event")
 public class Event {
     @Id
-    @ColumnDefault("nextval('event_event_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "event_id", nullable = false)
     private Long id;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "partner_id", nullable = false)
-    private com.example.demo.entity.Partner partner;
+    private Partner partner;
 
     @Size(max = 200)
     @NotNull
     @Column(name = "title", nullable = false, length = 200)
     private String title;
 
-    @Column(name = "description", length = Integer.MAX_VALUE)
+    @Column(name = "description")
     private String description;
 
     @NotNull
@@ -47,7 +46,7 @@ public class Event {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
-    private com.example.demo.entity.EventCategory category;
+    private EventCategory category;
 
     @ColumnDefault("0")
     @Column(name = "reward_per_checkin", precision = 18, scale = 2)

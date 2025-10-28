@@ -14,13 +14,13 @@ import java.time.OffsetDateTime;
 @Table(name = "event_recommendation")
 public class EventRecommendation {
     @Id
-    @ColumnDefault("nextval('event_recommendation_rec_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "rec_id", nullable = false)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "student_id")
-    private com.example.demo.entity.Student student;
+    private Student student;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "event_id")
@@ -29,7 +29,7 @@ public class EventRecommendation {
     @Column(name = "score", precision = 6, scale = 3)
     private BigDecimal score;
 
-    @Column(name = "explanation", length = Integer.MAX_VALUE)
+    @Column(name = "explanation") 
     private String explanation;
 
     @ColumnDefault("now()")

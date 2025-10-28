@@ -1,0 +1,262 @@
+package com.example.demo.service.impl;
+
+import com.example.demo.dto.request.*;
+import com.example.demo.dto.response.*;
+import com.example.demo.entity.*;
+import com.example.demo.exception.*;
+import com.example.demo.repository.*;
+import com.example.demo.service.WalletService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.Optional;
+
+@Service
+public class WalletServiceImpl implements WalletService {
+
+    private static final Logger logger = LoggerFactory.getLogger(WalletServiceImpl.class);
+
+    private final WalletRepository walletRepository;
+    private final WalletTransactionRepository transactionRepository;
+    private final PartnerRepository partnerRepository;
+
+    private static final Long ADMIN_WALLET_OWNER_ID = 1L; // Cấu hình Admin Wallet ID
+    private static final String ADMIN_OWNER_TYPE = "ADMIN";
+
+    public WalletServiceImpl(WalletRepository walletRepository,
+                             WalletTransactionRepository transactionRepository,
+                             PartnerRepository partnerRepository) {
+        this.walletRepository = walletRepository;
+        this.transactionRepository = transactionRepository;
+        this.partnerRepository = partnerRepository;
+    }
+
+    // --- READ OPERATIONS ---
+    @Override
+    @Transactional(readOnly = true)
+    public WalletResponseDTO getWalletById(Long walletId) {
+        Wallet wallet = findWalletByIdOrThrow(walletId);
+        return convertToWalletDTO(wallet);
+    }
+
+    // =======================================================
+    // == PHƯƠNG THỨC ĐƯỢC THÊM LẠI ĐỂ SỬA LỖI CONTROLLER ==
+    // =======================================================
+    @Override
+    @Transactional(readOnly = true)
+    public WalletResponseDTO getWalletByOwner(String ownerType, Long ownerId) {
+        Wallet wallet = walletRepository.findByOwnerTypeAndOwnerId(ownerType, ownerId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Wallet not found for ownerType: " + ownerType + " and ownerId: " + ownerId));
+        return convertToWalletDTO(wallet);
+    }
+    // =======================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WalletTransactionResponseDTO> getWalletHistoryById(Long walletId, Pageable pageable) {
+        if (!walletRepository.existsById(walletId)) {
+            throw new ResourceNotFoundException("Wallet not found with id: " + walletId);
+        }
+        Page<WalletTransaction> transactions = transactionRepository.findByWalletIdOrderByCreatedAtDesc(walletId, pageable);
+        return transactions.map(this::convertToTransactionDTO);
+    }
+
+    // --- WRITE OPERATIONS ---
+    @Override
+    @Transactional
+    public WalletTransactionResponseDTO adminTopupForPartner(WalletTopupRequestDTO topupRequest) {
+         BigDecimal amount = topupRequest.getAmount();
+         Partner partner = partnerRepository.findById(topupRequest.getPartnerId())
+                 .orElseThrow(() -> new ResourceNotFoundException("Partner not found with id: " + topupRequest.getPartnerId()));
+         // Sửa lại: Lấy ví từ owner thay vì ID trực tiếp, an toàn hơn
+         Wallet partnerWallet = walletRepository.findByOwnerTypeAndOwnerId("PARTNER", partner.getId())
+                 .orElseThrow(() -> new ResourceNotFoundException("Wallet not found for partner: " + partner.getId()));
+         Wallet adminWallet = walletRepository.findByOwnerTypeAndOwnerId(ADMIN_OWNER_TYPE, ADMIN_WALLET_OWNER_ID)
+                 .orElseThrow(() -> new IllegalStateException("Admin wallet is not configured."));
+
+         partnerWallet.setBalance(partnerWallet.getBalance().add(amount));
+         adminWallet.setBalance(adminWallet.getBalance().subtract(amount));
+
+         walletRepository.save(partnerWallet);
+         walletRepository.save(adminWallet);
+
+         WalletTransaction transaction = new WalletTransaction();
+         transaction.setWallet(partnerWallet);
+         transaction.setCounterparty(adminWallet);
+         transaction.setTxnType("ADMIN_TOPUP");
+         transaction.setAmount(amount);
+         transaction.setReferenceType("ADMIN_ACTION");
+         // Nên thêm Idempotency Key cho cả Topup
+         // transaction.setIdempotencyKey(generateIdempotencyKey());
+
+         WalletTransaction savedTransaction = transactionRepository.save(transaction);
+         return convertToTransactionDTO(savedTransaction);
+    }
+
+    @Override
+    @Transactional
+    public WalletTransactionResponseDTO transferCoins(WalletTransferRequestDTO request) {
+        // Idempotency Check
+        transactionRepository.findByIdempotencyKey(request.getIdempotencyKey()).ifPresent(tx -> {
+             logger.warn("Idempotency key {} already processed. Returning existing transaction.", request.getIdempotencyKey());
+             throw new DataIntegrityViolationException("Duplicate transaction: Idempotency key already used."); // Nên throw lỗi rõ ràng
+        });
+
+
+        BigDecimal amount = request.getAmount();
+        Wallet fromWallet = findWalletByIdOrThrow(request.getFromWalletId());
+        Wallet toWallet = findWalletByIdOrThrow(request.getToWalletId());
+
+        if (fromWallet.getId().equals(toWallet.getId())) {
+             throw new DataIntegrityViolationException("Cannot transfer to the same wallet.");
+        }
+
+        // Check balance
+        if (fromWallet.getBalance().compareTo(amount) < 0) {
+            throw new DataIntegrityViolationException("Insufficient funds in wallet " + fromWallet.getId());
+        }
+
+        // Perform transfer
+        fromWallet.setBalance(fromWallet.getBalance().subtract(amount));
+        toWallet.setBalance(toWallet.getBalance().add(amount));
+
+        walletRepository.save(fromWallet);
+        walletRepository.save(toWallet);
+
+        // Record transaction (from perspective of the sender)
+        WalletTransaction transaction = new WalletTransaction();
+        transaction.setWallet(fromWallet);
+        transaction.setCounterparty(toWallet);
+        transaction.setTxnType("TRANSFER");
+        transaction.setAmount(amount.negate()); // Ghi âm
+        transaction.setIdempotencyKey(request.getIdempotencyKey());
+
+        WalletTransaction savedTransaction = transactionRepository.save(transaction);
+        logger.info("Transfer successful: {} coins from wallet {} to {}", amount, fromWallet.getId(), toWallet.getId());
+        return convertToTransactionDTO(savedTransaction);
+    }
+
+    @Override
+    @Transactional
+    public WalletTransactionResponseDTO redeemCoins(WalletRedeemRequestDTO request) {
+        // Idempotency Check
+        transactionRepository.findByIdempotencyKey(request.getIdempotencyKey()).ifPresent(tx -> {
+             logger.warn("Idempotency key {} already processed for redeem. Returning existing transaction.", request.getIdempotencyKey());
+             throw new DataIntegrityViolationException("Duplicate transaction: Idempotency key already used.");
+        });
+
+        BigDecimal amount = request.getAmount();
+        Wallet studentWallet = findWalletByIdOrThrow(request.getStudentWalletId());
+
+        // Check balance
+        if (studentWallet.getBalance().compareTo(amount) < 0) {
+            throw new DataIntegrityViolationException("Insufficient funds in student wallet " + studentWallet.getId());
+        }
+
+        // Deduct balance
+        studentWallet.setBalance(studentWallet.getBalance().subtract(amount));
+        walletRepository.save(studentWallet);
+
+        // Record transaction
+        WalletTransaction transaction = new WalletTransaction();
+        transaction.setWallet(studentWallet);
+        transaction.setTxnType("REDEEM_PRODUCT");
+        transaction.setAmount(amount.negate()); // Ghi âm
+        transaction.setReferenceType("PRODUCT_INVOICE");
+        transaction.setReferenceId(request.getReferenceId());
+        transaction.setIdempotencyKey(request.getIdempotencyKey());
+
+        WalletTransaction savedTransaction = transactionRepository.save(transaction);
+        logger.info("Redemption successful: {} coins from wallet {} for invoice {}", amount, studentWallet.getId(), request.getReferenceId());
+        return convertToTransactionDTO(savedTransaction);
+    }
+
+    @Override
+    @Transactional
+    public WalletTransactionResponseDTO rollbackTransaction(WalletRollbackRequestDTO request) {
+         // Idempotency Check for rollback itself
+        transactionRepository.findByIdempotencyKey(request.getIdempotencyKey()).ifPresent(tx -> {
+             logger.warn("Idempotency key {} already processed for rollback. Returning existing transaction.", request.getIdempotencyKey());
+             throw new DataIntegrityViolationException("Duplicate transaction: Idempotency key already used.");
+        });
+
+        // 1. Find the original transaction
+        WalletTransaction originalTx = transactionRepository.findById(request.getOriginalTransactionId())
+                .orElseThrow(() -> new ResourceNotFoundException("Original transaction not found: " + request.getOriginalTransactionId()));
+
+        // TODO: Add more checks (e.g., if already rolled back, type allowed?)
+
+        // 2. Determine wallets and amount to reverse
+        Wallet walletToCredit = originalTx.getWallet();
+        Wallet walletToDebit = originalTx.getCounterparty();
+        BigDecimal amountToReverse = originalTx.getAmount().abs();
+
+        // 3. Reverse balances
+        walletToCredit.setBalance(walletToCredit.getBalance().add(amountToReverse));
+        walletRepository.save(walletToCredit);
+
+        if (walletToDebit != null) {
+            // Kiểm tra ví debit còn đủ tiền để trừ lại không
+            if (walletToDebit.getBalance().compareTo(amountToReverse) < 0) {
+                logger.error("Cannot rollback transaction {}: Debit wallet {} has insufficient funds.", originalTx.getId(), walletToDebit.getId());
+                throw new DataIntegrityViolationException("Insufficient funds in counterparty wallet for rollback.");
+            }
+            walletToDebit.setBalance(walletToDebit.getBalance().subtract(amountToReverse));
+            walletRepository.save(walletToDebit);
+        }
+
+        // 4. Record the rollback transaction
+        WalletTransaction rollbackTx = new WalletTransaction();
+        rollbackTx.setWallet(walletToCredit);
+        rollbackTx.setCounterparty(walletToDebit);
+        rollbackTx.setTxnType("ROLLBACK"); // Hoặc REFUND
+        rollbackTx.setAmount(amountToReverse); // Cộng lại tiền
+        rollbackTx.setReferenceType("WALLET_TRANSACTION");
+        rollbackTx.setReferenceId(originalTx.getId());
+        rollbackTx.setIdempotencyKey(request.getIdempotencyKey());
+
+        WalletTransaction savedRollbackTx = transactionRepository.save(rollbackTx);
+        logger.info("Rollback successful for original transaction {}: {} coins credited to wallet {}", originalTx.getId(), amountToReverse, walletToCredit.getId());
+        return convertToTransactionDTO(savedRollbackTx);
+    }
+
+    // --- HELPER METHODS ---
+    private Wallet findWalletByIdOrThrow(Long walletId) {
+        return walletRepository.findById(walletId)
+                .orElseThrow(() -> new ResourceNotFoundException("Wallet not found with id: " + walletId));
+    }
+
+    private WalletResponseDTO convertToWalletDTO(Wallet wallet) {
+        WalletResponseDTO dto = new WalletResponseDTO();
+        dto.setId(wallet.getId());
+        dto.setOwnerType(wallet.getOwnerType());
+        dto.setOwnerId(wallet.getOwnerId());
+        dto.setCurrency(wallet.getCurrency());
+        dto.setBalance(wallet.getBalance());
+        dto.setCreatedAt(wallet.getCreatedAt());
+        return dto;
+    }
+
+    private WalletTransactionResponseDTO convertToTransactionDTO(WalletTransaction transaction) {
+        WalletTransactionResponseDTO dto = new WalletTransactionResponseDTO();
+        dto.setId(transaction.getId());
+        dto.setTxnType(transaction.getTxnType());
+        dto.setAmount(transaction.getAmount());
+        dto.setReferenceType(transaction.getReferenceType());
+        dto.setReferenceId(transaction.getReferenceId());
+        dto.setCreatedAt(transaction.getCreatedAt());
+        if (transaction.getWallet() != null) {
+            dto.setWalletId(transaction.getWallet().getId());
+        }
+        if (transaction.getCounterparty() != null) {
+            dto.setCounterpartyId(transaction.getCounterparty().getId());
+        }
+        return dto;
+    }
+}

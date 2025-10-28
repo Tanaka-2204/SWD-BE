@@ -15,16 +15,17 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "product_invoice")
 public class ProductInvoice {
+
     @Id
-    @ColumnDefault("nextval('product_invoice_invoice_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "invoice_id", nullable = false)
     private Long id;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "student_id", nullable = false)
-    private com.example.demo.entity.Student student;
-
+    private Student student;
+    
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "product_id", nullable = false)
@@ -50,7 +51,7 @@ public class ProductInvoice {
     private String status;
 
     @Size(max = 12)
-    @Column(name = "verification_code", length = 12)
+    @Column(name = "verification_code", length = 12, unique = true) // THÊM unique = true
     private String verificationCode;
 
     @ColumnDefault("now()")

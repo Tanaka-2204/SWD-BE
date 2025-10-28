@@ -14,8 +14,9 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "partner")
 public class Partner {
+
     @Id
-    @ColumnDefault("nextval('partner_partner_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "partner_id", nullable = false)
     private Long id;
 
@@ -38,7 +39,7 @@ public class Partner {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "wallet_id")
-    private com.example.demo.entity.Wallet wallet;
+    private Wallet wallet;
 
     @ColumnDefault("now()")
     @Column(name = "created_at")

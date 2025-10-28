@@ -13,8 +13,9 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "event_broadcast")
 public class EventBroadcast {
+    
     @Id
-    @ColumnDefault("nextval('event_broadcast_broadcast_id_seq')")
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // THAY THẾ CÁI NÀY
     @Column(name = "broadcast_id", nullable = false)
     private Long id;
 
@@ -24,7 +25,7 @@ public class EventBroadcast {
     private Event event;
 
     @NotNull
-    @Column(name = "message_content", nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = "message_content", nullable = false)
     private String messageContent;
 
     @ColumnDefault("now()")
