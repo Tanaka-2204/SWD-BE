@@ -25,7 +25,7 @@ RUN apk add --no-cache wget
 
 WORKDIR /app
 
-# Tạo user non-root để chạy application (bảo mật)
+# Tạo user non-root để chạy application (bảo mật)m
 RUN addgroup -S spring && adduser -S spring -G spring
 
 # Copy file JAR từ build stage

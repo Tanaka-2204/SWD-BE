@@ -95,6 +95,56 @@ public class WalletServiceImpl implements WalletService {
         return dto;
     }
 
+    @Override
+    @Transactional
+    public void deductBalance(String ownerType, Long ownerId, BigDecimal amount, String referenceType, Long referenceId) {
+        Wallet wallet = walletRepository.findByOwnerTypeAndOwnerId(ownerType, ownerId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Wallet not found for ownerType: " + ownerType + " and ownerId: " + ownerId));
+
+        if (wallet.getBalance().compareTo(amount) < 0) {
+            throw new IllegalStateException("Insufficient balance");
+        }
+
+        wallet.setBalance(wallet.getBalance().subtract(amount));
+
+        // Create transaction record
+        WalletTransaction transaction = new WalletTransaction();
+        transaction.setWallet(wallet);
+        transaction.setTxnType("DEBIT");
+        transaction.setAmount(amount.negate()); // Negative for debit
+        transaction.setReferenceType(referenceType);
+        transaction.setReferenceId(referenceId);
+        transaction.setIdempotencyKey(generateIdempotencyKey(referenceType, referenceId, "DEBIT"));
+
+        transactionRepository.save(transaction);
+    }
+
+    @Override
+    @Transactional
+    public void refundBalance(String ownerType, Long ownerId, BigDecimal amount, String referenceType, Long referenceId) {
+        Wallet wallet = walletRepository.findByOwnerTypeAndOwnerId(ownerType, ownerId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Wallet not found for ownerType: " + ownerType + " and ownerId: " + ownerId));
+
+        wallet.setBalance(wallet.getBalance().add(amount));
+
+        // Create transaction record
+        WalletTransaction transaction = new WalletTransaction();
+        transaction.setWallet(wallet);
+        transaction.setTxnType("CREDIT");
+        transaction.setAmount(amount);
+        transaction.setReferenceType(referenceType);
+        transaction.setReferenceId(referenceId);
+        transaction.setIdempotencyKey(generateIdempotencyKey(referenceType, referenceId, "CREDIT"));
+
+        transactionRepository.save(transaction);
+    }
+
+    private String generateIdempotencyKey(String referenceType, Long referenceId, String txnType) {
+        return referenceType + "_" + referenceId + "_" + txnType + "_" + System.currentTimeMillis();
+    }
+
     private WalletTransactionResponseDTO convertToTransactionDTO(WalletTransaction transaction) {
         WalletTransactionResponseDTO dto = new WalletTransactionResponseDTO();
         dto.setId(transaction.getId());
