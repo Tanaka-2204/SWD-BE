@@ -110,7 +110,7 @@ public class StudentServiceImpl implements StudentService {
     }
 
     // Helper method to convert Student Entity to StudentResponseDTO
-    private StudentResponseDTO toResponseDTO(Student student) {
+    StudentResponseDTO toResponseDTO(Student student) {
         StudentResponseDTO dto = new StudentResponseDTO();
         dto.setId(student.getId());
         dto.setFullName(student.getFullName());
