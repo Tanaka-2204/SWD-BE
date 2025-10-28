@@ -30,6 +30,11 @@ public class Checkin {
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "student_id", nullable = false)
+    private Student student;
+
     @ColumnDefault("now()")
     @Column(name = "checkin_time")
     private OffsetDateTime checkinTime;

@@ -16,9 +16,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.OffsetDateTime;
+import org.springframework.data.jpa.domain.Specification; // Thêm
+import jakarta.persistence.criteria.Predicate; // Thêm
+import java.util.ArrayList; // Thêm
 import java.util.List;
+import java.time.OffsetDateTime;
 import java.util.stream.Collectors;
 
 @Service
@@ -75,8 +77,8 @@ public class EventServiceImpl implements EventService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<EventResponseDTO> getAllEvents(Pageable pageable) {
-        Page<Event> eventPage = eventRepository.findAll(pageable);
+    public Page<EventResponseDTO> getAllEvents(Specification<Event> spec, Pageable pageable) {
+        Page<Event> eventPage = eventRepository.findAll(spec, pageable); // Dùng findAll với Specification
         return eventPage.map(this::convertToDTO);
     }
 

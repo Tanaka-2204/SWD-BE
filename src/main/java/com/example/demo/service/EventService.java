@@ -5,6 +5,8 @@ import com.example.demo.dto.request.EventUpdateDTO;
 import com.example.demo.dto.response.EventResponseDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification; // Thêm
+import com.example.demo.entity.Event;
 
 import java.util.List;
 
@@ -15,7 +17,7 @@ public interface EventService {
 
     EventResponseDTO getEventById(Long eventId);
 
-    Page<EventResponseDTO> getAllEvents(Pageable pageable);
+    Page<EventResponseDTO> getAllEvents(Specification<Event> spec, Pageable pageable);
 
     EventResponseDTO updateEvent(Long eventId, EventUpdateDTO requestDTO);
 
