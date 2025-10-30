@@ -13,4 +13,5 @@ public class StudentResponseDTO {
     private String email;
     private String avatarUrl;
     private OffsetDateTime createdAt;
+    private String status;
 }

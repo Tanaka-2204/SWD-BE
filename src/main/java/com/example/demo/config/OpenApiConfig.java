@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.info.Contact;
 import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.info.License;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.servers.Server;
 import org.springframework.context.annotation.Configuration;
@@ -37,17 +36,17 @@ import org.springframework.context.annotation.Configuration;
             url = "https://brachycranic-noncorrelative-joya.ngrok-free.dev",
             description = "Ngrok Public Tunnel"
         )
-    },
-    // Áp dụng yêu cầu xác thực JWT cho TẤT CẢ các API theo mặc định
-    security = @SecurityRequirement(name = "bearerAuth")
+    }
+    // <<< TÔI ĐÃ XÓA "security = @SecurityRequirement(name = "bearerAuth")" KHỎI ĐÂY >>>
 )
 @SecurityScheme(
-    name = "bearerAuth", // Tên tham chiếu cho cơ chế bảo mật
-    description = "JWT authentication token",
+    name = "bearerAuth", // Tên này vẫn giữ nguyên
+    description = "Enter JWT Bearer token",
     type = SecuritySchemeType.HTTP,
     scheme = "bearer",
     bearerFormat = "JWT",
-  in = SecuritySchemeIn.HEADER
+    in = SecuritySchemeIn.HEADER
 )
 public class OpenApiConfig {
+    // Không cần nội dung
 }

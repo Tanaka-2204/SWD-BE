@@ -2,6 +2,7 @@ package com.example.demo.service.impl;
 
 import com.example.demo.dto.request.StudentProfileCompletionDTO;
 import com.example.demo.dto.request.StudentProfileUpdateDTO;
+import com.example.demo.dto.request.UserStatusUpdateDTO;
 import com.example.demo.dto.response.StudentResponseDTO;
 import com.example.demo.entity.Student;
 import com.example.demo.entity.University;
@@ -9,6 +10,8 @@ import com.example.demo.exception.DataIntegrityViolationException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.StudentRepository;
 import com.example.demo.repository.UniversityRepository;
+import com.example.demo.entity.enums.UserAccountStatus; // <<< THÊM IMPORT
+import com.example.demo.exception.BadRequestException;
 import com.example.demo.service.StudentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,6 +122,28 @@ public class StudentServiceImpl implements StudentService {
         return toResponseDTO(updatedStudent);
     }
 
+    @Override
+    @Transactional
+    public StudentResponseDTO updateStudentStatus(Long studentId, UserStatusUpdateDTO dto) {
+        logger.info("Admin updating status for studentId: {} to {}", studentId, dto.getStatus());
+
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + studentId));
+
+        UserAccountStatus newStatus;
+        try {
+            // Chuyển String ("ACTIVE") thành Enum (UserAccountStatus.ACTIVE)
+            newStatus = UserAccountStatus.valueOf(dto.getStatus().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid status value: " + dto.getStatus());
+        }
+
+        student.setStatus(newStatus);
+        Student updatedStudent = studentRepository.save(student);
+
+        return toResponseDTO(updatedStudent);
+    }
+    
     // Helper method to convert Student Entity to StudentResponseDTO
     StudentResponseDTO toResponseDTO(Student student) {
         StudentResponseDTO dto = new StudentResponseDTO();

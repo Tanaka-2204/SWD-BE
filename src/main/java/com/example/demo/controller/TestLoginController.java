@@ -5,7 +5,6 @@ import com.example.demo.dto.response.TestLoginResponseDTO;
 import com.example.demo.service.TestLoginService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -33,8 +32,6 @@ public class TestLoginController {
     @ApiResponse(responseCode = "200", description = "Login successful, token returned")
     @ApiResponse(responseCode = "400", description = "Incorrect username or password")
     @ApiResponse(responseCode = "404", description = "User not found")
-    // Dòng này rất quan trọng: Nó báo cho Swagger rằng API này KHÔNG cần xác thực
-    @SecurityRequirement(name = "bearerAuth", scopes = {}) 
     @PostMapping("/login")
     public ResponseEntity<TestLoginResponseDTO> loginForSwagger(
             @Valid @RequestBody TestLoginRequestDTO requestDTO) {

@@ -5,6 +5,7 @@ import com.example.demo.dto.response.ProductResponseDTO;
 import com.example.demo.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/products")
 @RequiredArgsConstructor
 @Tag(name = "Product", description = "Product management APIs")
+@SecurityRequirement(name = "bearerAuth")
 public class ProductController {
 
     private final ProductService productService;

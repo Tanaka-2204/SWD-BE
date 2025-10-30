@@ -6,7 +6,6 @@ import com.example.demo.dto.response.ProductResponseDTO;
 import com.example.demo.entity.Product;
 import com.example.demo.entity.ProductInvoice;
 import com.example.demo.entity.Student;
-import com.example.demo.entity.Wallet;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.ProductInvoiceRepository;
 import com.example.demo.repository.ProductRepository;

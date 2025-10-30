@@ -6,6 +6,7 @@ import com.example.demo.dto.response.ProductResponseDTO;
 import com.example.demo.service.ProductInvoiceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/invoices")
 @RequiredArgsConstructor
 @Tag(name = "Product Invoice", description = "Product invoice management APIs")
+@SecurityRequirement(name = "bearerAuth")
 public class ProductInvoiceController {
 
     private final ProductInvoiceService productInvoiceService;

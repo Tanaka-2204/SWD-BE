@@ -4,8 +4,6 @@ import com.example.demo.dto.request.ProductInvoiceRequestDTO;
 import com.example.demo.dto.response.ProductInvoiceResponseDTO;
 import com.example.demo.dto.response.ProductResponseDTO;
 import org.springframework.data.domain.Page;
-
-import java.util.List;
 import java.util.Map;
 
 public interface ProductInvoiceService {

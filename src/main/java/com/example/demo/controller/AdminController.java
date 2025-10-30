@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.request.EventCategoryRequestDTO;
 import com.example.demo.dto.request.PartnerRequestDTO;
+import com.example.demo.dto.request.UserStatusUpdateDTO;
 import com.example.demo.dto.request.WalletTopupRequestDTO;
 import com.example.demo.dto.response.StudentResponseDTO;
 import com.example.demo.service.StudentService;
@@ -17,6 +18,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -29,6 +31,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/admin")
 @Tag(name = "1. Admin Management", description = "APIs for administrative tasks")
+@SecurityRequirement(name = "bearerAuth")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
@@ -141,5 +144,35 @@ public class AdminController {
     public ResponseEntity<Page<StudentResponseDTO>> getAllStudents(Pageable pageable) {
         Page<StudentResponseDTO> students = studentService.getAllStudents(pageable);
         return ResponseEntity.ok(students);
+    }
+
+    @Operation(summary = "Admin updates a student's status", description = "Updates the status of a specific student (e.g., to 'ACTIVE' or 'SUSPENDED').")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Student status updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid status value provided"),
+        @ApiResponse(responseCode = "404", description = "Student not found")
+    })
+    @PatchMapping("/students/{id}/status") // <<< API MỚI
+    public ResponseEntity<StudentResponseDTO> updateStudentStatus(
+            @Parameter(description = "ID of the student to update") @PathVariable Long id,
+            @Valid @RequestBody UserStatusUpdateDTO statusDTO) {
+        
+        StudentResponseDTO updatedStudent = studentService.updateStudentStatus(id, statusDTO);
+        return ResponseEntity.ok(updatedStudent);
+    }
+
+    @Operation(summary = "Admin updates a partner's status", description = "Updates the status of a specific partner (e.g., to 'ACTIVE' or 'SUSPENDED').")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Partner status updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid status value provided"),
+        @ApiResponse(responseCode = "404", description = "Partner not found")
+    })
+    @PatchMapping("/partners/{id}/status") // <<< API MỚI
+    public ResponseEntity<PartnerResponseDTO> updatePartnerStatus(
+            @Parameter(description = "ID of the partner to update") @PathVariable Long id,
+            @Valid @RequestBody UserStatusUpdateDTO statusDTO) {
+        
+        PartnerResponseDTO updatedPartner = partnerService.updatePartnerStatus(id, statusDTO);
+        return ResponseEntity.ok(updatedPartner);
     }
 }

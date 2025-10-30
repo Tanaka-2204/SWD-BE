@@ -28,7 +28,6 @@ public class UniversityController {
         description = "Returns a list of all universities in the system. This is a public endpoint."
     )
     @ApiResponse(responseCode = "200", description = "Successfully retrieved list")
-    @SecurityRequirement(name = "bearerAuth", scopes = {})
     @GetMapping
     public ResponseEntity<List<UniversityResponseDTO>> getAllUniversities() {
         List<UniversityResponseDTO> universities = universityService.getAllUniversities();

@@ -1,9 +1,11 @@
 package com.example.demo.service.impl;
 
 import com.example.demo.dto.request.PartnerRequestDTO;
+import com.example.demo.dto.request.UserStatusUpdateDTO;
 import com.example.demo.dto.response.PartnerResponseDTO;
 import com.example.demo.entity.Partner;
 import com.example.demo.entity.Wallet;
+import com.example.demo.entity.enums.UserAccountStatus;
 import com.example.demo.exception.DataIntegrityViolationException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.PartnerRepository;
@@ -177,6 +179,14 @@ public class PartnerServiceImpl implements PartnerService {
 
     @Override
     @Transactional(readOnly = true)
+    public PartnerResponseDTO getPartnerByCognitoSub(String cognitoSub) {
+        Partner partner = partnerRepository.findByCognitoSub(cognitoSub)
+                .orElseThrow(() -> new ResourceNotFoundException("Partner profile not found for authenticated user."));
+        return convertToDTO(partner);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<PartnerResponseDTO> getAllPartners() {
         return partnerRepository.findAll().stream()
                 .map(this::convertToDTO)
@@ -209,6 +219,27 @@ public class PartnerServiceImpl implements PartnerService {
         return convertToDTO(updatedPartner);
     }
 
+    @Override
+    @Transactional
+    public PartnerResponseDTO updatePartnerStatus(Long partnerId, UserStatusUpdateDTO dto) {
+        logger.info("Admin updating status for partnerId: {} to {}", partnerId, dto.getStatus());
+
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Partner not found with id: " + partnerId));
+
+        UserAccountStatus newStatus;
+        try {
+            newStatus = UserAccountStatus.valueOf(dto.getStatus().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid status value: " + dto.getStatus());
+        }
+
+        partner.setStatus(newStatus);
+        Partner updatedPartner = partnerRepository.save(partner);
+
+        return convertToDTO(updatedPartner);
+    }
+    
     @Override
     @Transactional
     public void deletePartner(Long partnerId) {

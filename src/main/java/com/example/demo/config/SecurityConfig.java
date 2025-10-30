@@ -1,34 +1,28 @@
-package com.example.demo.config; // Đảm bảo đúng package
+package com.example.demo.config;
 
-import org.springframework.beans.factory.annotation.Value;
-import com.example.demo.repository.StudentRepository; // <<< THÊM
-import com.example.demo.entity.Student; // <<< THÊM
-import java.util.Optional;
+import com.example.demo.repository.StudentRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.convert.converter.Converter; // Thêm import
+import org.springframework.core.convert.converter.Converter; 
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.GrantedAuthority; // Thêm import
-import org.springframework.security.core.authority.SimpleGrantedAuthority; // Thêm import
-import org.springframework.security.oauth2.jwt.Jwt; // Thêm import
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter; // Thêm import
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter; // Thêm import
+import org.springframework.security.core.GrantedAuthority; 
+import org.springframework.security.core.authority.SimpleGrantedAuthority; 
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter; 
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter; 
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
 import java.util.Arrays;
-import java.util.Collection; // Thêm import
-import java.util.Collections; // Thêm import
-import java.util.List; // Thêm import
-import java.util.stream.Collectors; // Thêm import
-import java.util.stream.Stream; // Thêm import
+import java.util.Collection; 
+import java.util.Collections; 
+import java.util.List; 
+import java.util.stream.Collectors; 
+import java.util.stream.Stream; 
 
 @Configuration
 @EnableWebSecurity
@@ -36,8 +30,6 @@ import java.util.stream.Stream; // Thêm import
 public class SecurityConfig {
 
     // Inject JWKS URI from application.properties
-    @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
-    private String jwkSetUri;
     private final StudentRepository studentRepository;
     private final CognitoGroupsConverter cognitoGroupsConverter;
 
@@ -64,7 +56,6 @@ public class SecurityConfig {
             // === CẬP NHẬT Ở ĐÂY ===
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt
-                    .decoder(jwtDecoder())
                     // Sử dụng custom converter để đọc role từ Cognito groups
                     .jwtAuthenticationConverter(jwtAuthenticationConverter())
                 )
@@ -75,19 +66,13 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // --- JWT Decoder Bean --- (Giữ nguyên)
-    @Bean
-    public JwtDecoder jwtDecoder() {
-        return NimbusJwtDecoder.withJwkSetUri(this.jwkSetUri).build();
-    }
-
     // --- CORS Configuration Bean --- (Giữ nguyên)
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://127.0.0.1:3000", "*"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept"));
+        configuration.setAllowedOrigins(Arrays.asList( "*"));
+        configuration.setAllowedMethods(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(false);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", configuration);

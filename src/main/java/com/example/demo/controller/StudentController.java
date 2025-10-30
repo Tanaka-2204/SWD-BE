@@ -5,19 +5,21 @@ import com.example.demo.dto.request.StudentProfileCompletionDTO;
 import com.example.demo.dto.request.StudentProfileUpdateDTO;
 import com.example.demo.dto.response.StudentResponseDTO;
 import com.example.demo.service.StudentService;
+import com.example.demo.exception.ForbiddenException;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/students")
+@SecurityRequirement(name = "bearerAuth")
 public class StudentController {
 
     private final StudentService studentService;
@@ -44,6 +46,27 @@ public class StudentController {
             completionDTO
         );
         return new ResponseEntity<>(newStudent, HttpStatus.CREATED);
+    }
+
+    @Operation(summary = "Get current student's profile (Me)", description = "Retrieves the profile details of the currently authenticated student.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved profile"),
+            @ApiResponse(responseCode = "403", description = "Forbidden: Student profile not completed"),
+            @ApiResponse(responseCode = "404", description = "Student profile not found for authenticated user")
+    })
+    @GetMapping("/me")
+    public ResponseEntity<StudentResponseDTO> getMyProfile(
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal) {
+        
+        // 1. Kiểm tra xem quá trình phiên dịch có trả về studentId không
+        if (principal.getStudentId() == null) {
+            // Nếu không có studentId, tức là user đã đăng ký Cognito nhưng chưa gọi complete-profile
+            throw new ForbiddenException("Student profile is not completed. Please call /complete-profile first.");
+        }
+        
+        // 2. Gọi service bằng studentId nội bộ đã được phiên dịch
+        StudentResponseDTO student = studentService.getStudentById(principal.getStudentId());
+        return ResponseEntity.ok(student);
     }
 
     @Operation(summary = "Update current student's profile", description = "Allows an authenticated student to update their own profile information (e.g., name, phone number, avatar). Email cannot be changed here.")

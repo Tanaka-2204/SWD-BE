@@ -1,20 +1,14 @@
 package com.example.demo.service.impl;
 
 import com.example.demo.dto.request.EventCreateDTO;
-import com.example.demo.dto.request.EventFundingRequestDTO;
 import com.example.demo.dto.request.EventUpdateDTO;
 import com.example.demo.dto.response.EventCategoryResponseDTO;
-import com.example.demo.dto.response.EventFundingResponseDTO;
 import com.example.demo.dto.response.EventResponseDTO;
 import com.example.demo.entity.Event;
 import com.example.demo.entity.EventCategory;
-import com.example.demo.entity.EventFunding;
 import com.example.demo.entity.Partner;
-import com.example.demo.entity.Wallet;
-import com.example.demo.entity.WalletTransaction;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.EventCategoryRepository;
-import com.example.demo.repository.EventFundingRepository;
 import com.example.demo.repository.EventRepository;
 import com.example.demo.repository.PartnerRepository;
 import com.example.demo.repository.WalletTransactionRepository;

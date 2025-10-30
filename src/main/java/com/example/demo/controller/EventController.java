@@ -17,9 +17,7 @@ import com.example.demo.service.EventService;
 import com.example.demo.service.FeedbackService;
 import com.example.demo.service.RegistrationService;
 import com.example.demo.util.EventSpecifications;
-import com.example.demo.config.AuthPrincipal; // <<< THÊM IMPORT NÀY
-import com.example.demo.exception.ForbiddenException;
-import org.springframework.security.oauth2.jwt.Jwt; // THÊM IMPORT ĐÚNG
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.data.domain.Page;

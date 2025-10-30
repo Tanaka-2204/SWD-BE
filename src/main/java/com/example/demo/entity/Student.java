@@ -1,5 +1,6 @@
 package com.example.demo.entity;
 
+import com.example.demo.entity.enums.UserAccountStatus;
 import com.example.demo.validation.annotations.VietnamesePhoneNumber;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -7,7 +8,9 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-
+import com.example.demo.entity.enums.UserAccountStatus; // <<< THÊM IMPORT NÀY
+import jakarta.persistence.EnumType; // <<< THÊM IMPORT NÀY
+import jakarta.persistence.Enumerated;
 import java.time.OffsetDateTime;
 
 @Getter
@@ -46,6 +49,12 @@ public class Student {
 
     @Column(name = "avatar_url") // Loại bỏ length
     private String avatarUrl;
+
+    @NotNull
+    @Enumerated(EnumType.STRING) 
+    @Column(name = "status", nullable = false, length = 20)
+    @ColumnDefault("'ACTIVE'") 
+    private UserAccountStatus status = UserAccountStatus.ACTIVE;
 
     @ColumnDefault("now()")
     @Column(name = "created_at")

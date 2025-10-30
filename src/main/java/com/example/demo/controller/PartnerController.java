@@ -1,6 +1,5 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.request.PartnerRequestDTO;
 import com.example.demo.dto.response.PartnerResponseDTO;
 import com.example.demo.dto.response.EventResponseDTO; 
 import com.example.demo.service.EventService; 
@@ -20,14 +19,15 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/partners")
+@SecurityRequirement(name = "bearerAuth")
 public class PartnerController {
 
     private final PartnerService partnerService;

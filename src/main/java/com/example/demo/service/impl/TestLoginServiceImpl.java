@@ -28,7 +28,7 @@ public class TestLoginServiceImpl implements TestLoginService {
     @Value("${AWS_COGNITO_USER_POOL_ID}")
     private String userPoolId;
 
-    @Value("${AWS.COGNITO.APPCLIENTID}") // << Biến mới
+    @Value("${AWS_COGNITO_APPCLIENTID}") // <<< Đảm bảo tên khóa chính xác này
     private String appClientId;
 
     // Constructor này sao chép y hệt logic từ PartnerServiceImpl (file 88)
