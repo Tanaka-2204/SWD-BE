@@ -1,15 +1,9 @@
 package com.example.demo.service.impl;
 
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
-import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProviderClientBuilder;
 import com.amazonaws.services.cognitoidp.model.*;
 import com.example.demo.dto.request.TestLoginRequestDTO;
 import com.example.demo.dto.response.TestLoginResponseDTO;
-import com.example.demo.exception.BadRequestException;
-import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.service.TestLoginService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,69 +15,61 @@ import java.util.Map;
 @Service
 public class TestLoginServiceImpl implements TestLoginService {
 
-    private static final Logger logger = LoggerFactory.getLogger(TestLoginServiceImpl.class);
+    private static final Logger log = LoggerFactory.getLogger(TestLoginServiceImpl.class);
 
     private final AWSCognitoIdentityProvider cognitoClient;
 
-    @Value("${AWS_COGNITO_USER_POOL_ID}")
-    private String userPoolId;
+    @Value("${aws.cognito.userPoolClientId}")
+    private String userPoolClientId;
 
-    @Value("${AWS_COGNITO_APPCLIENTID}") // <<< Đảm bảo tên khóa chính xác này
-    private String appClientId;
-
-    // Constructor này sao chép y hệt logic từ PartnerServiceImpl (file 88)
-    // để khởi tạo Cognito client
-    public TestLoginServiceImpl(
-            @Value("${AWS_ACCESS_KEY_ID}") String accessKey, // <<< SỬA Ở ĐÂY
-            @Value("${AWS_SECRET_ACCESS_KEY}") String secretKey, // <<< SỬA Ở ĐÂY
-            @Value("${AWS_REGION}") String awsRegion) {
-        
-        AWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
-        AWSStaticCredentialsProvider credentialsProvider = new AWSStaticCredentialsProvider(credentials);
-        this.cognitoClient = AWSCognitoIdentityProviderClientBuilder.standard()
-                .withCredentials(credentialsProvider)
-                .withRegion(awsRegion)
-                .build();
+    public TestLoginServiceImpl(AWSCognitoIdentityProvider cognitoClient) {
+        this.cognitoClient = cognitoClient;
     }
 
     @Override
-    public TestLoginResponseDTO loginForTest(TestLoginRequestDTO requestDTO) {
-        logger.warn("Performing test login for user: {}", requestDTO.getEmail());
+    public TestLoginResponseDTO loginForTest(TestLoginRequestDTO request) {
+        log.warn("Performing test login for user: {}", request.getEmail());
 
+        // 1. CHUẨN BỊ THAM SỐ
         Map<String, String> authParams = new HashMap<>();
-        authParams.put("USERNAME", requestDTO.getEmail());
-        authParams.put("PASSWORD", requestDTO.getPassword());
+        authParams.put("USERNAME", request.getEmail());
+        authParams.put("PASSWORD", request.getPassword());
+
+        // 2. KHỞI TẠO REQUEST ĐĂNG NHẬP THÔNG THƯỜNG
+        InitiateAuthRequest authRequest = new InitiateAuthRequest(); // <<< SỬ DỤNG InitiateAuth
         
-        // Chúng ta dùng ADMIN_NO_SRP_AUTH, một flow admin không cần tính toán SRP
-        // Flow này yêu cầu quyền cognito:AdminInitiateAuth
-        AdminInitiateAuthRequest authRequest = new AdminInitiateAuthRequest()
-                .withAuthFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)
-                .withUserPoolId(userPoolId)
-                .withClientId(appClientId)
-                .withAuthParameters(authParams);
+        // SỬ DỤNG USER_PASSWORD_AUTH (phải được bật trong App Client)
+        authRequest.withAuthFlow(AuthFlowType.USER_PASSWORD_AUTH); 
+        
+        authRequest.withClientId(userPoolClientId);
+        authRequest.withAuthParameters(authParams);
 
         try {
-            AdminInitiateAuthResult result = cognitoClient.adminInitiateAuth(authRequest);
-            AuthenticationResultType authResult = result.getAuthenticationResult();
+            // 3. GỌI API COGNITO
+            InitiateAuthResult result = cognitoClient.initiateAuth(authRequest); // <<< GỌI initiateAuth
 
-            if (authResult == null || authResult.getAccessToken() == null) {
-                throw new BadRequestException("Cognito did not return an access token.");
+            // 4. KIỂM TRA VÀ TRẢ VỀ KẾT QUẢ
+            if (result.getAuthenticationResult() != null) {
+                return new TestLoginResponseDTO(
+                        result.getAuthenticationResult().getIdToken(),
+                        result.getAuthenticationResult().getAccessToken(),
+                        result.getAuthenticationResult().getRefreshToken()
+                );
+            } else {
+                // Xử lý các trường hợp cần xác nhận (ví dụ: NEW_PASSWORD_REQUIRED, MFA) nếu có.
+                log.error("Cognito auth error: Authentication required next step: {}", result.getChallengeName());
+                throw new RuntimeException("Cognito authentication requires next step: " + result.getChallengeName());
             }
 
-            logger.warn("Test login successful for user: {}", requestDTO.getEmail());
-            return new TestLoginResponseDTO(
-                authResult.getAccessToken(),
-                authResult.getIdToken()
-            );
-
-        } catch (UserNotFoundException e) {
-            logger.error("Test login failed: User {} not found", requestDTO.getEmail());
-            throw new ResourceNotFoundException("User not found.");
         } catch (NotAuthorizedException e) {
-            logger.error("Test login failed: Incorrect username or password for user {}", requestDTO.getEmail());
-            throw new BadRequestException("Incorrect username or password.");
+            log.error("Cognito auth error: Invalid credentials. {}", e.getErrorMessage());
+            throw new RuntimeException("Invalid username or password.", e);
+        } catch (InvalidParameterException e) {
+            // Bao gồm lỗi "Auth flow not enabled for this client"
+            log.error("Cognito auth error: Auth flow not enabled for this client (or other parameter error). {}", e.getErrorMessage());
+            throw new RuntimeException("Cognito authentication error (check Cognito configuration).", e);
         } catch (Exception e) {
-            logger.error("Cognito auth error: {}", e.getMessage());
+            log.error("Cognito auth error: {}", e.getMessage());
             throw new RuntimeException("Cognito authentication error.", e);
         }
     }

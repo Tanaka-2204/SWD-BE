@@ -8,6 +8,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TestLoginResponseDTO {
+     
+    private String idToken;
+    
+    // JWT Access Token
     private String accessToken;
-    private String idToken; // Thêm cả IdToken nếu bạn cần
+    
+    // Refresh Token
+    private String refreshToken;
 }

@@ -19,7 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/invoices")
 @RequiredArgsConstructor
-@Tag(name = "Product Invoice", description = "Product invoice management APIs")
+@Tag(name = "3. Store & Redemption")
 @SecurityRequirement(name = "bearerAuth")
 public class ProductInvoiceController {
 

@@ -17,6 +17,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.http.HttpMethod;
 import java.util.Arrays;
 import java.util.Collection; 
 import java.util.Collections; 
@@ -48,15 +49,16 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/swagger-ui/**",
                     "/v3/api-docs/**",
-                    "/v3/api-docs",
                     "/api/v1/test/login",
-                    "/api/v1/universities",
+                    
+                    // <<< SỬA LẠI CÁC DÒNG NÀY >>>
                     "/api/v1/event-categories",
                     "/api/v1/event-categories/*",
                     "/api/v1/products", 
                     "/api/v1/products/*"
-                ).permitAll()
-                .anyRequest().authenticated()
+                ).permitAll() 
+                .requestMatchers(HttpMethod.GET, "/api/v1/universities").permitAll()
+                .anyRequest().authenticated() // Bắt buộc xác thực cho TẤT CẢ các request còn lại
             )
             // === CẬP NHẬT Ở ĐÂY ===
             .oauth2ResourceServer(oauth2 -> oauth2

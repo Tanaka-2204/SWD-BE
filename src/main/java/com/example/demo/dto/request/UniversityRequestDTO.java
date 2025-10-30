@@ -6,13 +6,16 @@ import lombok.Data;
 
 @Data
 public class UniversityRequestDTO {
-    @NotBlank
-    @Size(max = 200)
+
+    @NotBlank(message = "University name is required")
+    @Size(max = 255)
     private String name;
 
-    @Size(max = 50)
+    @NotBlank(message = "University code is required (e.g., FPT, HCMUT)")
+    @Size(max = 20)
     private String code;
 
-    @Size(max = 200)
+    @NotBlank(message = "University domain is required (e.g., fpt.edu.vn)")
+    @Size(max = 100)
     private String domain;
 }

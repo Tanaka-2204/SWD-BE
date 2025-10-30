@@ -5,7 +5,10 @@ import com.example.demo.dto.request.PartnerRequestDTO;
 import com.example.demo.dto.request.UserStatusUpdateDTO;
 import com.example.demo.dto.request.WalletTopupRequestDTO;
 import com.example.demo.dto.response.StudentResponseDTO;
+import com.example.demo.dto.request.UniversityRequestDTO; // <<< THÊM
+import com.example.demo.dto.response.UniversityResponseDTO;
 import com.example.demo.service.StudentService;
+import com.example.demo.service.UniversityService;
 import com.example.demo.dto.response.EventCategoryResponseDTO;
 import com.example.demo.dto.response.PartnerResponseDTO;
 import com.example.demo.dto.response.WalletTransactionResponseDTO;
@@ -39,15 +42,17 @@ public class AdminController {
     private final WalletService walletService;
     private final EventCategoryService eventCategoryService;
     private final StudentService studentService;
+    private final UniversityService universityService;
 
     public AdminController(PartnerService partnerService,
                            WalletService walletService,
                            EventCategoryService eventCategoryService,
-                           StudentService studentService) {
+                           StudentService studentService, UniversityService universityService) {
         this.partnerService = partnerService;
         this.walletService = walletService;
         this.eventCategoryService = eventCategoryService;
         this.studentService = studentService;
+        this.universityService = universityService;
     }
 
     // ===================================
@@ -174,5 +179,32 @@ public class AdminController {
         
         PartnerResponseDTO updatedPartner = partnerService.updatePartnerStatus(id, statusDTO);
         return ResponseEntity.ok(updatedPartner);
+    }
+
+    @Operation(summary = "Admin creates a new university", description = "ADMIN only.")
+    @ApiResponse(responseCode = "201", description = "University created successfully")
+    @PostMapping("/universities") // <<< API MỚI
+    public ResponseEntity<UniversityResponseDTO> createUniversity(
+            @Valid @RequestBody UniversityRequestDTO dto) {
+        UniversityResponseDTO createdUniversity = universityService.createUniversity(dto);
+        return new ResponseEntity<>(createdUniversity, HttpStatus.CREATED);
+    }
+
+    @Operation(summary = "Admin updates a university", description = "ADMIN only.")
+    @ApiResponse(responseCode = "200", description = "University updated successfully")
+    @PutMapping("/universities/{id}") // <<< API MỚI
+    public ResponseEntity<UniversityResponseDTO> updateUniversity(
+            @PathVariable Long id,
+            @Valid @RequestBody UniversityRequestDTO dto) {
+        UniversityResponseDTO updatedUniversity = universityService.updateUniversity(id, dto);
+        return ResponseEntity.ok(updatedUniversity);
+    }
+
+    @Operation(summary = "Admin deletes a university", description = "ADMIN only. Fails if any student is linked.")
+    @ApiResponse(responseCode = "204", description = "University deleted successfully")
+    @DeleteMapping("/universities/{id}") // <<< API MỚI
+    public ResponseEntity<Void> deleteUniversity(@PathVariable Long id) {
+        universityService.deleteUniversity(id);
+        return ResponseEntity.noContent().build();
     }
 }

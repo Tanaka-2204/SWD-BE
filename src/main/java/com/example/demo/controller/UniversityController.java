@@ -2,20 +2,16 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.response.UniversityResponseDTO;
 import com.example.demo.service.UniversityService;
-
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.tags.Tag;
-
+import io.swagger.v3.oas.annotations.tags.Tag; // <<< THÊM
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*; // <<< THÊM
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/universities")
-@Tag(name = "7. Public Data")
+@Tag(name = "7. Public Data") // <<< Gắn Tag Swagger
 public class UniversityController {
 
     private final UniversityService universityService;
