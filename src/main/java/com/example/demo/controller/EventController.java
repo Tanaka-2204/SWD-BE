@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.config.AuthPrincipal;
 import com.example.demo.dto.request.CheckinRequestDTO;
 import com.example.demo.dto.request.EventUpdateDTO;
 import com.example.demo.dto.response.CheckinResponseDTO;
@@ -9,14 +10,17 @@ import com.example.demo.dto.response.FeedbackResponseDTO;
 import com.example.demo.dto.response.EventResponseDTO;
 import com.example.demo.dto.response.RegistrationResponseDTO;
 import com.example.demo.dto.response.StudentResponseDTO;
+import com.example.demo.exception.ForbiddenException;
 import com.example.demo.entity.Event;
 import com.example.demo.service.CheckinService;
 import com.example.demo.service.EventService;
 import com.example.demo.service.FeedbackService;
 import com.example.demo.service.RegistrationService;
 import com.example.demo.util.EventSpecifications;
-// import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties.Jwt; // XÓA DÒNG NÀY
+import com.example.demo.config.AuthPrincipal; // <<< THÊM IMPORT NÀY
+import com.example.demo.exception.ForbiddenException;
 import org.springframework.security.oauth2.jwt.Jwt; // THÊM IMPORT ĐÚNG
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.data.domain.Page;
 import io.swagger.v3.oas.annotations.Operation;
@@ -82,7 +86,22 @@ public class EventController {
         return ResponseEntity.ok(event);
     }
 
-    // Endpoint POST /partners/{partnerId}/events nằm trong PartnerController
+    @Operation(summary = "Create a new event", description = "Endpoint for an authenticated partner or admin to create a new event. PartnerId must be specified in the request body.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Event created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid event data provided"),
+        @ApiResponse(responseCode = "403", description = "Forbidden: User does not have permission or Partner mismatch"),
+        @ApiResponse(responseCode = "404", description = "Partner or Category specified not found")
+    })
+    @PostMapping // Đổi endpoint thành POST /events
+    @PreAuthorize("hasRole('ADMIN') or hasRole('PARTNERS')") // Chỉ Admin hoặc Partner được gọi
+    public ResponseEntity<EventResponseDTO> createEvent(
+            @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt, // Inject JWT
+            @Valid @RequestBody EventCreateDTO requestDTO) { // DTO chứa partnerId
+
+        EventResponseDTO createdEvent = eventService.createEvent(jwt, requestDTO); // Gọi service mới
+        return new ResponseEntity<>(createdEvent, HttpStatus.CREATED);
+    }
 
     @Operation(summary = "Update an existing event", description = "Allows the organizing partner or an admin to update event details.")
     @ApiResponses({
@@ -129,12 +148,18 @@ public class EventController {
         @ApiResponse(responseCode = "404", description = "Event or Student not found"),
         @ApiResponse(responseCode = "409", description = "Already registered")
     })
-    @PostMapping("/{eventId}/register") // GIỮ LẠI PHIÊN BẢN NÀY
+    @PostMapping("/{eventId}/register")
     public ResponseEntity<RegistrationResponseDTO> registerForEvent(
-            @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt, // Đã sửa import
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal, // <<< SỬA Ở ĐÂY
             @Parameter(description = "ID of the event to register for") @PathVariable Long eventId) {
-        String cognitoSub = jwt.getSubject(); // Sẽ hoạt động
-        RegistrationResponseDTO registration = registrationService.createRegistration(cognitoSub, eventId);
+        
+        // KIỂM TRA: API này yêu cầu phải complete-profile
+        if (principal.getStudentId() == null) {
+            throw new ForbiddenException("Student profile is not completed. Please call /api/students/complete-profile first.");
+        }
+        
+        // Service bây giờ chỉ cần studentId, không cần biết cognitoSub
+        RegistrationResponseDTO registration = registrationService.createRegistration(principal.getStudentId(), eventId);
         return new ResponseEntity<>(registration, HttpStatus.CREATED);
     }
 
@@ -147,11 +172,11 @@ public class EventController {
         @ApiResponse(responseCode = "404", description = "Event or Student not found"),
         @ApiResponse(responseCode = "409", description = "Student already checked in")
     })
-    @PostMapping("/{eventId}/checkin") // GIỮ LẠI PHIÊN BẢN NÀY
+    @PostMapping("/{eventId}/checkin") 
+    @PreAuthorize("hasRole('PARTNER')")
     public ResponseEntity<CheckinResponseDTO> checkInStudent(
             @Parameter(description = "ID of the event") @PathVariable Long eventId,
             @Valid @RequestBody CheckinRequestDTO requestDTO) {
-        // TODO: Thêm @PreAuthorize("hasRole('PARTNER') or hasRole('ADMIN')")
         CheckinResponseDTO checkinResponse = checkinService.performCheckin(eventId, requestDTO);
         return ResponseEntity.ok(checkinResponse);
     }
@@ -175,16 +200,30 @@ public class EventController {
     )
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Feedback submitted successfully"),
-        @ApiResponse(responseCode = "403", description = "Student did not register for this event"),
+        @ApiResponse(responseCode = "403", description = "Student did not register for this event / Profile not completed"), // Sửa mô tả
         @ApiResponse(responseCode = "409", description = "Feedback already submitted")
     })
     @PostMapping("/{eventId}/feedback")
     public ResponseEntity<FeedbackResponseDTO> submitFeedback(
-            @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt, // Đã sửa import
+            // SỬA Ở ĐÂY: Dùng AuthPrincipal thay vì Jwt
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal, 
+            
             @Parameter(description = "ID of the event") @PathVariable Long eventId,
             @Valid @RequestBody FeedbackRequestDTO requestDTO) {
-        String cognitoSub = jwt.getSubject(); // Sẽ hoạt động
-        FeedbackResponseDTO feedbackResponse = feedbackService.createFeedback(cognitoSub, eventId, requestDTO);
+        
+        // 1. Kiểm tra xem user đã "complete-profile" (hoàn tất hồ sơ) chưa
+        // Nếu getStudentId() trả về null, nghĩa là họ chưa hoàn tất.
+        if (principal.getStudentId() == null) {
+            throw new ForbiddenException("Student profile is not completed. Please call /api/students/complete-profile first.");
+        }
+
+        // 2. Lấy ID nội bộ (BE ID) từ principal
+        Long studentId = principal.getStudentId(); 
+
+        // 3. Gọi service với ID nội bộ (studentId)
+        // Dòng này bây giờ sẽ chạy đúng
+        FeedbackResponseDTO feedbackResponse = feedbackService.createFeedback(studentId, eventId, requestDTO);
+        
         return new ResponseEntity<>(feedbackResponse, HttpStatus.CREATED);
     }
 }

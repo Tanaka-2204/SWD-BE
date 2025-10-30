@@ -19,4 +19,5 @@ public class EventResponseDTO {
     private BigDecimal totalBudgetCoin;
     private String status;
     private OffsetDateTime createdAt;
+    private Integer maxAttendees;
 }

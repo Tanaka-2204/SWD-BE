@@ -13,7 +13,7 @@ public interface RegistrationService {
      * @param eventId The ID of the event to register for.
      * @return A DTO of the created registration.
      */
-    RegistrationResponseDTO createRegistration(String cognitoSub, Long eventId);
+    RegistrationResponseDTO createRegistration(Long studentId, Long eventId);
 
     /**
      * Gets a paginated list of students (attendees) registered for a specific event.

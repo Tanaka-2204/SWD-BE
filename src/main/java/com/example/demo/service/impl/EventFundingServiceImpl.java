@@ -10,6 +10,7 @@ import com.example.demo.exception.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Service
 public class EventFundingServiceImpl implements EventFundingService {
@@ -38,7 +39,12 @@ public class EventFundingServiceImpl implements EventFundingService {
         // 1. Lấy Partner và Ví của họ
         Partner partner = partnerRepository.findById(partnerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Partner not found: " + partnerId));
+
+        // Lấy ví từ đối tượng Partner để đảm bảo đúng
         Wallet partnerWallet = partner.getWallet();
+        if (partnerWallet == null) {
+            throw new ResourceNotFoundException("Wallet not found for partner: " + partnerId);
+        }
 
         // 2. Lấy Sự kiện
         Event event = eventRepository.findById(requestDTO.getEventId())
@@ -52,7 +58,8 @@ public class EventFundingServiceImpl implements EventFundingService {
 
         // 4. Kiểm tra số dư
         if (partnerWallet.getBalance().compareTo(amount) < 0) {
-            throw new DataIntegrityViolationException("Insufficient funds.");
+            throw new DataIntegrityViolationException(
+                    "Insufficient funds. Partner balance is: " + partnerWallet.getBalance());
         }
 
         // 5. Thực hiện giao dịch
@@ -61,8 +68,23 @@ public class EventFundingServiceImpl implements EventFundingService {
         walletRepository.save(partnerWallet);
 
         // Cộng ngân sách vào Event
-        event.setTotalBudgetCoin(event.getTotalBudgetCoin().add(amount));
-        eventRepository.save(event);
+        BigDecimal newTotalBudget = event.getTotalBudgetCoin().add(amount);
+        event.setTotalBudgetCoin(newTotalBudget);
+
+        // <<< LOGIC MỚI: TÍNH TOÁN MAX ATTENDEES >>>
+        BigDecimal reward = event.getRewardPerCheckin();
+        // Kiểm tra nếu reward > 0
+        if (reward != null && reward.compareTo(BigDecimal.ZERO) > 0) {
+            // Chia lấy phần nguyên, làm tròn xuống (FLOOR)
+            Integer maxSlots = newTotalBudget.divide(reward, 0, RoundingMode.FLOOR).intValue();
+            event.setMaxAttendees(maxSlots);
+        } else {
+            // Nếu không có thưởng, set 0
+            event.setMaxAttendees(0);
+        }
+        // <<< KẾT THÚC LOGIC MỚI >>>
+
+        eventRepository.save(event); // Lưu sự kiện (đã có totalBudgetCoin VÀ maxAttendees mới)
 
         // 6. Ghi lại lịch sử cấp vốn
         EventFunding funding = new EventFunding();
@@ -71,16 +93,18 @@ public class EventFundingServiceImpl implements EventFundingService {
         funding.setAmountCoin(amount);
         EventFunding savedFunding = eventFundingRepository.save(funding);
 
-        // 7. Ghi lại lịch sử giao dịch ví
+        // 7. Ghi lại lịch sử giao dịch ví (cho Partner)
         WalletTransaction transaction = new WalletTransaction();
         transaction.setWallet(partnerWallet);
         transaction.setTxnType("PARTNER_FUND_EVENT");
         transaction.setAmount(amount.negate()); // Ghi âm (trừ tiền)
         transaction.setReferenceType("EVENT_FUNDING");
         transaction.setReferenceId(savedFunding.getId());
+        // (Bạn có thể thêm Idempotency Key ở đây nếu cần)
         transactionRepository.save(transaction);
 
-        return convertToDTO(savedFunding); // Bạn cần tự tạo hàm convertToDTO
+        // 8. Trả về DTO
+        return convertToDTO(savedFunding);
     }
 
     // Helper method

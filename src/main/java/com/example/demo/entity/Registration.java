@@ -11,7 +11,7 @@ import java.time.OffsetDateTime;
 @Getter
 @Setter
 @Entity
-@Table(name = "registration", uniqueConstraints = { // THÊM uniqueConstraints
+@Table(name = "Registration", uniqueConstraints = { // THÊM uniqueConstraints
         @UniqueConstraint(columnNames = { "student_id", "event_id" })
 })
 public class Registration {

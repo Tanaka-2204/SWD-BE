@@ -7,13 +7,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification; // Thêm
 import com.example.demo.entity.Event;
-
+import org.springframework.security.oauth2.jwt.Jwt;
 import java.util.List;
 
 public interface EventService {
 
     // --- CRUD Methods ---
-    EventResponseDTO createEvent(Long partnerId, EventCreateDTO requestDTO);
+    EventResponseDTO createEvent(Jwt jwt, EventCreateDTO requestDTO);
 
     EventResponseDTO getEventById(Long eventId);
 

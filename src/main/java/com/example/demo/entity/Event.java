@@ -64,4 +64,8 @@ public class Event {
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
 
+    @ColumnDefault("0")
+    @Column(name = "max_attendees")
+    private Integer maxAttendees;
+
 }

@@ -12,6 +12,8 @@ import com.example.demo.repository.UniversityRepository;
 import com.example.demo.service.StudentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
@@ -27,6 +29,14 @@ public class StudentServiceImpl implements StudentService {
     public StudentServiceImpl(StudentRepository studentRepository, UniversityRepository universityRepository) {
         this.studentRepository = studentRepository;
         this.universityRepository = universityRepository;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<StudentResponseDTO> getAllStudents(Pageable pageable) {
+        logger.info("Admin fetching all students, page {} size {}", pageable.getPageNumber(), pageable.getPageSize());
+        Page<Student> studentPage = studentRepository.findAll(pageable);
+        return studentPage.map(this::toResponseDTO); // Dùng lại helper method
     }
 
     @Override

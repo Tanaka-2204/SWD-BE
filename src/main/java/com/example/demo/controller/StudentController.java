@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.config.AuthPrincipal;
 import com.example.demo.dto.request.StudentProfileCompletionDTO;
 import com.example.demo.dto.request.StudentProfileUpdateDTO;
 import com.example.demo.dto.response.StudentResponseDTO;
@@ -33,13 +34,15 @@ public class StudentController {
     })
     @PostMapping("/complete-profile")
     public ResponseEntity<StudentResponseDTO> completeProfile(
-            @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt,
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal, // <<< SỬA Ở ĐÂY
             @Valid @RequestBody StudentProfileCompletionDTO completionDTO) {
 
-        String cognitoSub = jwt.getSubject();
-        String email = jwt.getClaimAsString("email");
-
-        StudentResponseDTO newStudent = studentService.completeProfile(cognitoSub, email, completionDTO);
+        // Dùng cognitoSub và email trực tiếp từ principal
+        StudentResponseDTO newStudent = studentService.completeProfile(
+            principal.getCognitoSub(), 
+            principal.getEmail(), 
+            completionDTO
+        );
         return new ResponseEntity<>(newStudent, HttpStatus.CREATED);
     }
 
@@ -52,11 +55,11 @@ public class StudentController {
     })
     @PutMapping("/me")
     public ResponseEntity<StudentResponseDTO> updateMyProfile(
-            @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt,
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal, // <<< SỬA Ở ĐÂY
             @Valid @RequestBody StudentProfileUpdateDTO updateDTO) {
-
-        String cognitoSub = jwt.getSubject();
-        StudentResponseDTO updatedStudent = studentService.updateMyProfile(cognitoSub, updateDTO);
+        
+        // Vẫn dùng cognitoSub để tìm và cập nhật
+        StudentResponseDTO updatedStudent = studentService.updateMyProfile(principal.getCognitoSub(), updateDTO);
         return ResponseEntity.ok(updatedStudent);
     }
 }

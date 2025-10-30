@@ -53,20 +53,6 @@ public class WalletController {
         return ResponseEntity.ok(history);
     }
 
-    @Operation(summary = "Admin top up coin for a partner", description = "Admin-only endpoint to add funds to a partner's wallet.")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Top-up successful"),
-        @ApiResponse(responseCode = "403", description = "Forbidden: User does not have ADMIN role"),
-        @ApiResponse(responseCode = "404", description = "Partner or wallets not found")
-    })
-    @PostMapping("/admin/topup") // Sửa lại đường dẫn theo yêu cầu
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<WalletTransactionResponseDTO> topupWalletForPartner(
-            @Valid @RequestBody WalletTopupRequestDTO topupRequest) {
-        WalletTransactionResponseDTO transaction = walletService.adminTopupForPartner(topupRequest);
-        return ResponseEntity.ok(transaction);
-    }
-
     @Operation(summary = "Transfer coins between wallets", description = "Transfers a specified amount from one wallet to another. Requires appropriate permissions.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Transfer successful"),
@@ -75,7 +61,7 @@ public class WalletController {
         @ApiResponse(responseCode = "404", description = "Source or destination wallet not found")
     })
     @PostMapping("/transfer")
-    // TODO: Add appropriate @PreAuthorize (e.g., check if user owns fromWalletId or is Admin)
+    @PreAuthorize("")
     public ResponseEntity<WalletTransactionResponseDTO> transferCoins(
             @Valid @RequestBody WalletTransferRequestDTO transferRequest) {
         WalletTransactionResponseDTO transaction = walletService.transferCoins(transferRequest);
@@ -89,7 +75,7 @@ public class WalletController {
         @ApiResponse(responseCode = "404", description = "Student wallet not found")
     })
     @PostMapping("/redeem")
-    // TODO: Secure this endpoint appropriately (internal call, specific role?)
+    @PreAuthorize("")
     public ResponseEntity<WalletTransactionResponseDTO> redeemCoins(
             @Valid @RequestBody WalletRedeemRequestDTO redeemRequest) {
         WalletTransactionResponseDTO transaction = walletService.redeemCoins(redeemRequest);
@@ -104,7 +90,7 @@ public class WalletController {
         @ApiResponse(responseCode = "404", description = "Original transaction or wallets not found")
     })
     @PostMapping("/rollback")
-    // TODO: Add appropriate @PreAuthorize (e.g., Admin or Partner role depending on context)
+    @PreAuthorize("ADMIN")
     public ResponseEntity<WalletTransactionResponseDTO> rollbackTransaction(
             @Valid @RequestBody WalletRollbackRequestDTO rollbackRequest) {
         WalletTransactionResponseDTO transaction = walletService.rollbackTransaction(rollbackRequest);

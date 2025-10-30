@@ -44,20 +44,6 @@ public class PartnerController {
         this.broadcastService = broadcastService;
     }
 
-    @Operation(summary = "Admin creates a new partner", description = "Creates a new partner and an associated wallet. This endpoint requires ADMIN role.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Partner created successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid input data"),
-            @ApiResponse(responseCode = "403", description = "Forbidden: User does not have ADMIN role"),                                                                                          
-            @ApiResponse(responseCode = "409", description = "Partner with the same name already exists")
-    })
-    @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<PartnerResponseDTO> createPartner(@Valid @RequestBody PartnerRequestDTO requestDTO) {
-        PartnerResponseDTO newPartner = partnerService.createPartner(requestDTO);
-        return new ResponseEntity<>(newPartner, HttpStatus.CREATED);
-    }
-
     @Operation(summary = "Get a partner by ID", description = "Retrieves details of a specific partner.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Successfully retrieved partner"),
@@ -88,6 +74,7 @@ public class PartnerController {
         @ApiResponse(responseCode = "404", description = "Partner or wallet not found")
     })
     @GetMapping("/{partnerId}/wallet")
+    @PreAuthorize("PARTNER")
     public ResponseEntity<WalletResponseDTO> getPartnerWallet(
             @Parameter(description = "ID of the partner") @PathVariable Long partnerId) {
         // Dùng lại phương thức đã tạo trong WalletService
@@ -101,9 +88,9 @@ public class PartnerController {
         @ApiResponse(responseCode = "404", description = "Partner or wallet not found")
     })
     @GetMapping("/{partnerId}/wallet/history")
+    @PreAuthorize("")
     public ResponseEntity<Page<WalletTransactionResponseDTO>> getPartnerWalletHistory(
-            @Parameter(description = "ID of the partner") @PathVariable Long partnerId,
-            Pageable pageable) {
+            @Parameter(description = "ID of the partner") @PathVariable Long partnerId, Pageable pageable) {
         // 1. Lấy ví của partner
         WalletResponseDTO wallet = walletService.getWalletByOwner("PARTNER", partnerId);
         // 2. Lấy lịch sử từ walletId
@@ -119,6 +106,7 @@ public class PartnerController {
         @ApiResponse(responseCode = "404", description = "Partner or Event not found")
     })
     @PostMapping("/{partnerId}/fund-event")
+    @PreAuthorize("")
     public ResponseEntity<EventFundingResponseDTO> fundEvent(
             @Parameter(description = "ID of the partner") @PathVariable Long partnerId,
             @Valid @RequestBody EventFundingRequestDTO requestDTO) {
@@ -133,6 +121,7 @@ public class PartnerController {
         @ApiResponse(responseCode = "404", description = "Event not found")
     })
     @PostMapping("/{partnerId}/broadcast")
+    @PreAuthorize("")
     public ResponseEntity<EventBroadcastResponseDTO> sendBroadcast(
             @Parameter(description = "ID of the partner sending") @PathVariable Long partnerId,
             @Valid @RequestBody BroadcastRequestDTO requestDTO) {

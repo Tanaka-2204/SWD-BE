@@ -12,7 +12,7 @@ import java.time.OffsetDateTime;
 @Getter
 @Setter
 @Entity
-@Table(name = "partner")
+@Table(name = "Partner") // Giữ nguyên tên bảng là 'partner' nếu chưa đổi trong DB
 public class Partner {
 
     @Id
@@ -20,9 +20,14 @@ public class Partner {
     @Column(name = "partner_id", nullable = false)
     private Long id;
 
+    // --- THÊM TRƯỜNG cognito_sub ---
+    @Column(name = "cognito_sub", unique = true, nullable = true, updatable = false) // Cho phép NULL ban đầu nếu cần
+    private String cognitoSub;
+    // ----------------------------
+
     @Size(max = 200)
     @NotNull
-    @Column(name = "name", nullable = false, length = 200)
+    @Column(name = "name", nullable = false, length = 200, unique = true) // Thêm unique = true cho name
     private String name;
 
     @Size(max = 50)
@@ -30,15 +35,15 @@ public class Partner {
     private String organizationType;
 
     @Size(max = 200)
-    @Column(name = "contact_email", length = 200)
+    @Column(name = "contact_email", length = 200) // Cân nhắc thêm unique = true
     private String contactEmail;
 
     @Size(max = 20)
     @Column(name = "contact_phone", length = 20)
     private String contactPhone;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "wallet_id")
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL) // Đổi thành OneToOne và CascadeType.ALL nếu Wallet luôn đi kèm Partner
+    @JoinColumn(name = "wallet_id", unique = true) // Thêm unique = true cho wallet_id
     private Wallet wallet;
 
     @ColumnDefault("now()")

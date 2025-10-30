@@ -36,23 +36,21 @@ public class RegistrationServiceImpl implements RegistrationService {
 
     @Override
     @Transactional
-    public RegistrationResponseDTO createRegistration(String cognitoSub, Long eventId) {
-        // 1. Tìm sinh viên
-        Student student = studentRepository.findByCognitoSub(cognitoSub)
-                .orElseThrow(() -> new ResourceNotFoundException("Student not found. Please complete your profile."));
+    public RegistrationResponseDTO createRegistration(Long studentId, Long eventId) { 
+        // 1. Tìm sinh viên (Bây giờ dùng ID nội bộ)
+        Student student = studentRepository.findById(studentId) // <<< SỬA Ở ĐÂY
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found.")); // Lỗi này không nên xảy ra
 
-        // 2. Tìm sự kiện
+        // 2. Tìm sự kiện (Giữ nguyên)
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
 
-        // 3. Kiểm tra đã đăng ký chưa
+        // 3. Kiểm tra đã đăng ký chưa (Giữ nguyên)
         registrationRepository.findByStudentIdAndEventId(student.getId(), eventId).ifPresent(reg -> {
             throw new DataIntegrityViolationException("Student is already registered for this event.");
         });
-        
-        // 4. (Tùy chọn) Kiểm tra logic nghiệp vụ khác (còn slot, sự kiện chưa diễn ra...)
 
-        // 5. Tạo đăng ký
+        // 4. Tạo đăng ký (Giữ nguyên)
         Registration registration = new Registration();
         registration.setStudent(student);
         registration.setEvent(event);

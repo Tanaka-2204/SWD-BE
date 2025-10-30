@@ -4,5 +4,5 @@ import com.example.demo.dto.request.FeedbackRequestDTO;
 import com.example.demo.dto.response.FeedbackResponseDTO; // Cần tạo DTO
 
 public interface FeedbackService {
-    FeedbackResponseDTO createFeedback(String cognitoSub, Long eventId, FeedbackRequestDTO requestDTO);
+    FeedbackResponseDTO createFeedback(Long studentId, Long eventId, FeedbackRequestDTO requestDTO);
 }
