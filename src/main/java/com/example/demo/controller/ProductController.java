@@ -19,8 +19,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/products")
 @RequiredArgsConstructor
-@Tag(name = "Product", description = "Product management APIs")
 @SecurityRequirement(name = "bearerAuth")
+@Tag(name = "3. Store & Redemption")
 public class ProductController {
 
     private final ProductService productService;

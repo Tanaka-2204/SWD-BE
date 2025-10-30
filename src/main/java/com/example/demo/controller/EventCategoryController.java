@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/event-categories")
-@Tag(name = "5. Event Category", description = "APIs for managing event categories")
+@Tag(name = "7. Public Data")
 public class EventCategoryController {
 
     private final EventCategoryService eventCategoryService;

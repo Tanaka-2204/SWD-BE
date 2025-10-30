@@ -36,7 +36,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/events") // Đã đổi tiền tố
-@Tag(name = "6. Event", description = "APIs for creating and managing events")
+@Tag(name = "2. Events & Registration")
 public class EventController {
 
     private final EventService eventService;

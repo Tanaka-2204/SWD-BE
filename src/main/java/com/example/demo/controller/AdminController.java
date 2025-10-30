@@ -30,7 +30,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/admin")
-@Tag(name = "1. Admin Management", description = "APIs for administrative tasks")
+@Tag(name = "6. Admin Management")
 @SecurityRequirement(name = "bearerAuth")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {

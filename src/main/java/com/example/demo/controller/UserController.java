@@ -25,6 +25,7 @@ import com.example.demo.dto.response.StudentResponseDTO;
 @RequestMapping("/api/v1/me")
 @Tag(name = "1. User Profile", description = "APIs for managing the current user's profile")
 @SecurityRequirement(name = "bearerAuth")
+@Tag(name = "1. Authentication & Profile")
 public class UserController {
 
     private final UserService userService;
