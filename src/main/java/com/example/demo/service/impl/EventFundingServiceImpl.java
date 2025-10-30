@@ -1,11 +1,10 @@
 package com.example.demo.service.impl;
 
-// ... (Tất cả các import cần thiết)
-import com.example.demo.service.EventFundingService;
 import com.example.demo.dto.request.EventFundingRequestDTO;
 import com.example.demo.dto.response.EventFundingResponseDTO;
 import com.example.demo.entity.*;
 import com.example.demo.repository.*;
+import com.example.demo.service.EventFundingService;
 import com.example.demo.exception.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,8 +21,8 @@ public class EventFundingServiceImpl implements EventFundingService {
     private final WalletTransactionRepository transactionRepository;
 
     public EventFundingServiceImpl(PartnerRepository partnerRepository, EventRepository eventRepository,
-            WalletRepository walletRepository, EventFundingRepository eventFundingRepository,
-            WalletTransactionRepository transactionRepository) {
+                                   WalletRepository walletRepository, EventFundingRepository eventFundingRepository,
+                                   WalletTransactionRepository transactionRepository) {
         this.partnerRepository = partnerRepository;
         this.eventRepository = eventRepository;
         this.walletRepository = walletRepository;
@@ -40,7 +39,6 @@ public class EventFundingServiceImpl implements EventFundingService {
         Partner partner = partnerRepository.findById(partnerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Partner not found: " + partnerId));
 
-        // Lấy ví từ đối tượng Partner để đảm bảo đúng
         Wallet partnerWallet = partner.getWallet();
         if (partnerWallet == null) {
             throw new ResourceNotFoundException("Wallet not found for partner: " + partnerId);
@@ -52,7 +50,6 @@ public class EventFundingServiceImpl implements EventFundingService {
 
         // 3. Kiểm tra quyền: Partner này có phải người tổ chức sự kiện không?
         if (!event.getPartner().getId().equals(partnerId)) {
-            // Nếu bạn cho phép partner khác tài trợ, hãy bỏ qua bước này
             throw new ForbiddenException("Partner does not own this event.");
         }
 
@@ -62,7 +59,7 @@ public class EventFundingServiceImpl implements EventFundingService {
                     "Insufficient funds. Partner balance is: " + partnerWallet.getBalance());
         }
 
-        // 5. Thực hiện giao dịch
+        // 5. Thực hiện giao dịch và Cập nhật ngân sách
         // Trừ tiền ví Partner
         partnerWallet.setBalance(partnerWallet.getBalance().subtract(amount));
         walletRepository.save(partnerWallet);
@@ -71,20 +68,21 @@ public class EventFundingServiceImpl implements EventFundingService {
         BigDecimal newTotalBudget = event.getTotalBudgetCoin().add(amount);
         event.setTotalBudgetCoin(newTotalBudget);
 
-        // <<< LOGIC MỚI: TÍNH TOÁN MAX ATTENDEES >>>
-        BigDecimal reward = event.getRewardPerCheckin();
-        // Kiểm tra nếu reward > 0
-        if (reward != null && reward.compareTo(BigDecimal.ZERO) > 0) {
-            // Chia lấy phần nguyên, làm tròn xuống (FLOOR)
-            Integer maxSlots = newTotalBudget.divide(reward, 0, RoundingMode.FLOOR).intValue();
+        // 5.1. TÍNH TOÁN MAX ATTENDEES (SỬ DỤNG totalRewardPoints)
+        Integer totalRewardPoints = event.getTotalRewardPoints(); 
+        BigDecimal rewardPerAttendee = totalRewardPoints != null ? new BigDecimal(totalRewardPoints) : BigDecimal.ZERO;
+
+        // Chỉ tính MaxAttendees nếu điểm thưởng > 0 (nghĩa là ngân sách này dùng để thưởng)
+        if (rewardPerAttendee.compareTo(BigDecimal.ZERO) > 0) {
+            // Chia Tổng Ngân sách (Coin) cho Điểm thưởng trên mỗi người, làm tròn xuống
+            Integer maxSlots = newTotalBudget.divide(rewardPerAttendee, 0, RoundingMode.FLOOR).intValue();
             event.setMaxAttendees(maxSlots);
         } else {
-            // Nếu không có thưởng, set 0
-            event.setMaxAttendees(0);
+            // Nếu không có thưởng, không thể xác định max attendees từ ngân sách, đặt là 0
+            event.setMaxAttendees(0); 
         }
-        // <<< KẾT THÚC LOGIC MỚI >>>
-
-        eventRepository.save(event); // Lưu sự kiện (đã có totalBudgetCoin VÀ maxAttendees mới)
+        
+        eventRepository.save(event); // Lưu sự kiện
 
         // 6. Ghi lại lịch sử cấp vốn
         EventFunding funding = new EventFunding();
@@ -100,7 +98,6 @@ public class EventFundingServiceImpl implements EventFundingService {
         transaction.setAmount(amount.negate()); // Ghi âm (trừ tiền)
         transaction.setReferenceType("EVENT_FUNDING");
         transaction.setReferenceId(savedFunding.getId());
-        // (Bạn có thể thêm Idempotency Key ở đây nếu cần)
         transactionRepository.save(transaction);
 
         // 8. Trả về DTO

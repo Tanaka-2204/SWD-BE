@@ -49,9 +49,13 @@ public class Event {
     private EventCategory category;
 
     @ColumnDefault("0")
-    @Column(name = "reward_per_checkin", precision = 18, scale = 2)
-    private BigDecimal rewardPerCheckin;
+    @Column(name = "point_cost_to_register", nullable = false) 
+    private Integer pointCostToRegister;
 
+    @ColumnDefault("0")
+    @Column(name = "total_reward_points", nullable = false) // Điểm thưởng khi hoàn tất
+    private Integer totalRewardPoints;
+    
     @ColumnDefault("0")
     @Column(name = "total_budget_coin", precision = 18, scale = 2)
     private BigDecimal totalBudgetCoin;

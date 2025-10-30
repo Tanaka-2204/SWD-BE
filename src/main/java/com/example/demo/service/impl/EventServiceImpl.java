@@ -4,14 +4,20 @@ import com.example.demo.dto.request.EventCreateDTO;
 import com.example.demo.dto.request.EventUpdateDTO;
 import com.example.demo.dto.response.EventCategoryResponseDTO;
 import com.example.demo.dto.response.EventResponseDTO;
+import com.example.demo.entity.Checkin;
 import com.example.demo.entity.Event;
 import com.example.demo.entity.EventCategory;
 import com.example.demo.entity.Partner;
+import com.example.demo.entity.Student;
+import com.example.demo.entity.Wallet;
+import com.example.demo.entity.WalletTransaction;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.EventCategoryRepository;
 import com.example.demo.repository.EventRepository;
 import com.example.demo.repository.PartnerRepository;
 import com.example.demo.repository.WalletTransactionRepository;
+import com.example.demo.repository.WalletRepository;
+import com.example.demo.repository.CheckinRepository;
 import com.example.demo.service.EventService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +27,7 @@ import com.example.demo.exception.ForbiddenException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +37,7 @@ import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.stream.Collectors;
 import java.util.Collection;
+import java.util.Optional;
 
 @Service
 public class EventServiceImpl implements EventService {
@@ -40,45 +48,47 @@ public class EventServiceImpl implements EventService {
     private final JwtAuthenticationConverter jwtAuthenticationConverter;
     private static final Logger logger = LoggerFactory.getLogger(EventServiceImpl.class);
     private final WalletTransactionRepository transactionRepository;
+    private final CheckinRepository checkinRepository;
+    private final WalletRepository walletRepository;
 
     public EventServiceImpl(EventRepository eventRepository,
             PartnerRepository partnerRepository,
             EventCategoryRepository categoryRepository, JwtAuthenticationConverter jwtAuthenticationConverter,
-            WalletTransactionRepository transactionRepository) {
+            WalletTransactionRepository transactionRepository, CheckinRepository checkinRepository,
+            WalletRepository walletRepository) {
         this.eventRepository = eventRepository;
         this.partnerRepository = partnerRepository;
         this.categoryRepository = categoryRepository;
         this.jwtAuthenticationConverter = jwtAuthenticationConverter;
         this.transactionRepository = transactionRepository;
+        this.checkinRepository = checkinRepository;
+        this.walletRepository = walletRepository;
     }
 
     @Override
     @Transactional
-    public EventResponseDTO createEvent(Jwt jwt, EventCreateDTO requestDTO) { // Chữ ký đúng
+    public EventResponseDTO createEvent(Jwt jwt, EventCreateDTO requestDTO) {
         String cognitoSub = jwt.getSubject();
-        // Lấy roles từ JWT sử dụng converter
         Collection<? extends GrantedAuthority> authorities = jwtAuthenticationConverter.convert(jwt).getAuthorities();
         boolean isAdmin = authorities.stream()
-                .anyMatch(ga -> ga.getAuthority().equals("ROLE_ADMIN")); // Kiểm tra role ADMIN
+                .anyMatch(ga -> ga.getAuthority().equals("ROLE_ADMIN"));
         boolean isPartner = authorities.stream()
-                .anyMatch(ga -> ga.getAuthority().equals("ROLE_PARTNERS")); // Kiểm tra role PARTNER
+                .anyMatch(ga -> ga.getAuthority().equals("ROLE_PARTNERS"));
 
-        Long requestedPartnerId = requestDTO.getPartnerId(); // Lấy partnerId từ DTO
+        Long requestedPartnerId = requestDTO.getPartnerId();
 
         logger.info("User {} (Admin: {}, Partner: {}) attempting to create event for partnerId {}",
                 cognitoSub, isAdmin, isPartner, requestedPartnerId);
 
-        Partner partnerToAssign; // Partner sẽ được gán cho sự kiện
+        Partner partnerToAssign;
 
         // 1. Kiểm tra quyền hạn và xác định Partner
         if (isAdmin) {
-            // Admin có quyền tạo cho bất kỳ partner nào hợp lệ
             logger.info("Admin {} is creating event for partnerId {}.", cognitoSub, requestedPartnerId);
             partnerToAssign = partnerRepository.findById(requestedPartnerId)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Partner specified in request (ID: " + requestedPartnerId + ") not found."));
         } else if (isPartner) {
-            // Partner chỉ được tạo cho chính mình
             Partner loggedInPartner = partnerRepository.findByCognitoSub(cognitoSub)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Partner profile not found for authenticated user. Ensure cognitoSub is linked in Partner table."));
@@ -88,9 +98,8 @@ public class EventServiceImpl implements EventService {
                 throw new ForbiddenException("Partners can only create events for themselves. Mismatched partnerId.");
             }
             logger.info("Partner {} (ID: {}) is creating event for themselves.", cognitoSub, loggedInPartner.getId());
-            partnerToAssign = loggedInPartner; // Gán chính partner đang đăng nhập
+            partnerToAssign = loggedInPartner;
         } else {
-            // Vai trò không hợp lệ
             logger.error("Unauthorized role attempting to create event: User {}", cognitoSub);
             throw new ForbiddenException(
                     "User does not have permission (Admin or Partner role required) to create events.");
@@ -106,14 +115,26 @@ public class EventServiceImpl implements EventService {
 
         // 3. Tạo đối tượng Event
         Event event = new Event();
-        event.setPartner(partnerToAssign); // Gán Partner đã xác định ở bước 1
+        event.setPartner(partnerToAssign);
         event.setCategory(category);
         event.setTitle(requestDTO.getTitle());
         event.setDescription(requestDTO.getDescription());
+        
+        if (requestDTO.getStartTime() == null || requestDTO.getEndTime() == null) {
+            throw new IllegalArgumentException("Start time and end time are required.");
+        }
+
+        // Gán giá trị được người dùng cung cấp trong Request DTO
         event.setStartTime(requestDTO.getStartTime());
         event.setEndTime(requestDTO.getEndTime());
         event.setLocation(requestDTO.getLocation());
-        event.setRewardPerCheckin(requestDTO.getRewardPerCheckin());
+
+        // <<< SỬA ĐỔI: THAY rewardPerCheckin BẰNG pointCostToRegister VÀ
+        // totalRewardPoints >>>
+        event.setPointCostToRegister(requestDTO.getPointCostToRegister());
+        event.setTotalRewardPoints(requestDTO.getTotalRewardPoints());
+        // event.setRewardPerCheckin(requestDTO.getRewardPerCheckin()); // ĐÃ XÓA
+
         event.setTotalBudgetCoin(requestDTO.getTotalBudgetCoin());
         event.setStatus("DRAFT"); // Trạng thái ban đầu
 
@@ -122,7 +143,7 @@ public class EventServiceImpl implements EventService {
         logger.info("Successfully created event '{}' (ID: {}) for partner ID {}", savedEvent.getTitle(),
                 savedEvent.getId(), partnerToAssign.getId());
 
-        return convertToDTO(savedEvent); // Hàm helper giữ nguyên
+        return convertToDTO(savedEvent);
     }
 
     // --- READ ---
@@ -137,7 +158,7 @@ public class EventServiceImpl implements EventService {
     @Override
     @Transactional(readOnly = true)
     public Page<EventResponseDTO> getAllEvents(Specification<Event> spec, Pageable pageable) {
-        Page<Event> eventPage = eventRepository.findAll(spec, pageable); // Dùng findAll với Specification
+        Page<Event> eventPage = eventRepository.findAll(spec, pageable);
         return eventPage.map(this::convertToDTO);
     }
 
@@ -148,7 +169,7 @@ public class EventServiceImpl implements EventService {
         // 1. Tìm sự kiện
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
-        
+
         boolean rewardChanged = false; // Biến cờ để kiểm tra
 
         // 2. Cập nhật các trường nếu chúng được cung cấp trong DTO
@@ -171,40 +192,55 @@ public class EventServiceImpl implements EventService {
             event.setStatus(requestDTO.getStatus());
         }
 
-        // Cập nhật mức thưởng và đánh dấu
-        if (requestDTO.getRewardPerCheckin() != null) {
-            event.setRewardPerCheckin(requestDTO.getRewardPerCheckin());
+        // Cập nhật điểm cọc
+        if (requestDTO.getPointCostToRegister() != null) {
+            event.setPointCostToRegister(requestDTO.getPointCostToRegister());
+        }
+
+        // Cập nhật mức thưởng và đánh dấu (LOGIC CŨ ĐÃ BỊ LOẠI BỎ)
+        // <<< SỬA ĐỔI: Cập nhật totalRewardPoints và đánh dấu thay đổi >>>
+        if (requestDTO.getTotalRewardPoints() != null) {
+            event.setTotalRewardPoints(requestDTO.getTotalRewardPoints());
             rewardChanged = true; // Đánh dấu là reward đã thay đổi
         }
 
         // Cập nhật category (nếu có)
         if (requestDTO.getCategoryId() != null) {
             EventCategory category = categoryRepository.findById(requestDTO.getCategoryId())
-                .orElseThrow(() -> new ResourceNotFoundException("EventCategory not found with id: " + requestDTO.getCategoryId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "EventCategory not found with id: " + requestDTO.getCategoryId()));
             event.setCategory(category);
         }
-        
-        // 3. LOGIC MỚI: TÍNH TOÁN LẠI NẾU CẦN
-        // Nếu reward thay đổi, tính lại max attendees
-        if (rewardChanged) {
+
+        // 3. LOGIC MỚI: TÍNH TOÁN LẠI MAX ATTENDEES NẾU ĐIỂM THƯỞNG/NGÂN SÁCH THAY ĐỔI
+        // Lưu ý: Request DTO không bao gồm cập nhật ngân sách (totalBudgetCoin).
+        // Logic dưới đây chỉ tính lại nếu totalRewardPoints thay đổi.
+        if (rewardChanged || requestDTO.getTotalBudgetCoin() != null) { // Kiểm tra nếu ngân sách cũng thay đổi (từ
+                                                                        // EventUpdateDTO)
+            if (requestDTO.getTotalBudgetCoin() != null) {
+                event.setTotalBudgetCoin(requestDTO.getTotalBudgetCoin());
+            }
+
             BigDecimal totalBudget = event.getTotalBudgetCoin(); // Lấy ngân sách hiện tại
-            BigDecimal reward = event.getRewardPerCheckin(); // Lấy mức thưởng mới
+            Integer totalRewardPoints = event.getTotalRewardPoints();
+            BigDecimal rewardPerAttendee = totalRewardPoints != null ? new BigDecimal(totalRewardPoints)
+                    : BigDecimal.ZERO;
 
             // Chỉ tính toán nếu có thưởng
-            if (reward != null && reward.compareTo(BigDecimal.ZERO) > 0) {
+            if (rewardPerAttendee.compareTo(BigDecimal.ZERO) > 0 && totalBudget.compareTo(BigDecimal.ZERO) > 0) {
                 // Chia ngân sách cho mức thưởng, làm tròn xuống
-                Integer maxSlots = totalBudget.divide(reward, 0, RoundingMode.FLOOR).intValue();
+                Integer maxSlots = totalBudget.divide(rewardPerAttendee, 0, RoundingMode.FLOOR).intValue();
                 event.setMaxAttendees(maxSlots);
             } else {
-                // Nếu không có thưởng (hoặc thưởng = 0), set 0
+                // Nếu không có thưởng hoặc ngân sách = 0, set 0
                 event.setMaxAttendees(0);
             }
         }
         // <<< KẾT THÚC LOGIC MỚI >>>
-        
+
         // 4. Lưu sự kiện
         Event savedEvent = eventRepository.save(event);
-        
+
         // 5. Trả về DTO đã cập nhật
         return convertToDTO(savedEvent);
     }
@@ -216,8 +252,6 @@ public class EventServiceImpl implements EventService {
         if (!eventRepository.existsById(eventId)) {
             throw new ResourceNotFoundException("Event not found with id: " + eventId);
         }
-        // Lưu ý: Cần logic kiểm tra xem sự kiện có đang hoạt động hoặc có người đăng ký
-        // không trước khi xóa.
         eventRepository.deleteById(eventId);
     }
 
@@ -260,7 +294,111 @@ public class EventServiceImpl implements EventService {
         return eventRepository.findByTitleContainingIgnoreCase(keyword, pageable).map(this::convertToDTO);
     }
 
-    // --- HELPER METHOD ---
+    @Override
+    @Transactional
+    public EventResponseDTO finalizeEvent(Long eventId) {
+        // 1. Tìm sự kiện
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
+
+        // 2. Kiểm tra trạng thái và quyền
+        if ("FINALIZED".equals(event.getStatus())) {
+            throw new DataIntegrityViolationException("Event has already been finalized.");
+        }
+        // (LƯU Ý: Cần thêm logic kiểm tra thời gian sự kiện đã kết thúc và kiểm tra
+        // quyền ADMIN/PARTNER)
+
+        // 3. Xác định tổng số điểm cần chi trả cho mỗi người tham dự
+        Integer depositPoints = event.getPointCostToRegister() != null ? event.getPointCostToRegister() : 0;
+        Integer rewardPoints = event.getTotalRewardPoints() != null ? event.getTotalRewardPoints() : 0;
+
+        // Tổng số tiền thưởng/hoàn trả cho mỗi người tham dự thành công
+        BigDecimal totalPayoutAmount = new BigDecimal(depositPoints + rewardPoints);
+
+        if (totalPayoutAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            // Nếu không có điểm cọc hoặc điểm thưởng, chỉ cập nhật trạng thái
+            event.setStatus("FINALIZED");
+            Event savedEvent = eventRepository.save(event);
+            return convertToDTO(savedEvent);
+        }
+
+        // 4. Tìm Ví Partner (Nguồn tiền)
+        Wallet partnerWallet = event.getPartner().getWallet();
+        if (partnerWallet == null) {
+            throw new ResourceNotFoundException("Partner wallet not found for event creator.");
+        }
+
+        // 5. Lấy danh sách sinh viên đã check-in thành công
+        // Giả sử cột 'verified' trong bảng Checkin là true
+        List<Checkin> successfulCheckins = checkinRepository.findAllByEventIdAndVerifiedTrue(eventId);
+
+        if (successfulCheckins.isEmpty()) {
+            logger.warn("Event {} has no successful check-ins. Finalizing without transactions.", eventId);
+            event.setStatus("FINALIZED");
+            Event savedEvent = eventRepository.save(event);
+            return convertToDTO(savedEvent);
+        }
+
+        // 6. Kiểm tra ngân sách có đủ không
+        BigDecimal requiredBudget = totalPayoutAmount.multiply(new BigDecimal(successfulCheckins.size()));
+        if (partnerWallet.getBalance().compareTo(requiredBudget) < 0) {
+            // Cần xử lý lỗi này tùy theo yêu cầu: hoặc ném lỗi, hoặc chỉ thanh toán một
+            // phần
+            throw new ForbiddenException(
+                    "Partner wallet has insufficient funds to finalize rewards. Required: " + requiredBudget);
+        }
+
+        // 7. Thực hiện giao dịch cho từng sinh viên
+        for (Checkin checkin : successfulCheckins) {
+            Student student = checkin.getStudent();
+
+            Optional<Wallet> studentWalletOpt = walletRepository.findByOwnerTypeAndOwnerId("STUDENT", student.getId());
+            if (studentWalletOpt.isEmpty()) {
+                logger.error("Student wallet not found for student ID: {}. Skipping payout.", student.getId());
+                continue; // Bỏ qua sinh viên này
+            }
+            Wallet studentWallet = studentWalletOpt.get();
+
+            // 7.1. Cập nhật số dư ví
+            partnerWallet.setBalance(partnerWallet.getBalance().subtract(totalPayoutAmount));
+            studentWallet.setBalance(studentWallet.getBalance().add(totalPayoutAmount));
+
+            // 7.2. Ghi giao dịch cho Student (Nhận tiền)
+            WalletTransaction studentTx = new WalletTransaction();
+            studentTx.setWallet(studentWallet);
+            studentTx.setCounterparty(partnerWallet);
+            studentTx.setTxnType("EVENT_FINAL_PAYOUT");
+            studentTx.setAmount(totalPayoutAmount);
+            studentTx.setReferenceType("EVENT");
+            studentTx.setReferenceId(event.getId());
+
+            // 7.3. Ghi giao dịch cho Partner (Chi tiền)
+            WalletTransaction partnerTx = new WalletTransaction();
+            partnerTx.setWallet(partnerWallet);
+            partnerTx.setCounterparty(studentWallet);
+            partnerTx.setTxnType("EVENT_PAYOUT");
+            partnerTx.setAmount(totalPayoutAmount.negate()); // Ghi âm
+            partnerTx.setReferenceType("EVENT");
+            partnerTx.setReferenceId(event.getId());
+
+            transactionRepository.save(studentTx);
+            transactionRepository.save(partnerTx);
+        }
+
+        // 8. Lưu các ví đã cập nhật (Partner và Student cuối cùng)
+        walletRepository.save(partnerWallet);
+        // Lưu ý: Các ví student đã được cập nhật số dư, nếu muốn tối ưu, bạn có thể
+        // thu thập tất cả student wallets và lưu tất cả một lần sau vòng lặp.
+        // Trong @Transactional, việc này thường là an toàn.
+
+        // 9. Cập nhật trạng thái sự kiện
+        event.setStatus("FINALIZED");
+
+        Event savedEvent = eventRepository.save(event);
+
+        return convertToDTO(savedEvent);
+    }
+
     // --- HELPER METHOD ---
     private EventResponseDTO convertToDTO(Event event) {
         EventResponseDTO dto = new EventResponseDTO();
@@ -271,12 +409,16 @@ public class EventServiceImpl implements EventService {
         dto.setEndTime(event.getEndTime());
         dto.setLocation(event.getLocation());
         dto.setStatus(event.getStatus());
-        dto.setRewardPerCheckin(event.getRewardPerCheckin());
+
+        // <<< SỬA ĐỔI: THAY rewardPerCheckin BẰNG pointCostToRegister VÀ
+        // totalRewardPoints >>>
+        dto.setPointCostToRegister(event.getPointCostToRegister());
+        dto.setTotalRewardPoints(event.getTotalRewardPoints());
+        // dto.setRewardPerCheckin(event.getRewardPerCheckin()); // ĐÃ XÓA
+
         dto.setTotalBudgetCoin(event.getTotalBudgetCoin());
         dto.setCreatedAt(event.getCreatedAt());
-
-        // <<< DÒNG CÒN THIẾU MÀ BẠN CẦN THÊM LÀ ĐÂY >>>
-        dto.setMaxAttendees(event.getMaxAttendees()); // Lấy dữ liệu từ và gán vào
+        dto.setMaxAttendees(event.getMaxAttendees());
 
         if (event.getPartner() != null) {
             dto.setPartnerId(event.getPartner().getId());

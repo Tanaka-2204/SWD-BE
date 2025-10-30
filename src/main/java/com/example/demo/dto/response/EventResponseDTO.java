@@ -15,7 +15,8 @@ public class EventResponseDTO {
     private OffsetDateTime endTime;
     private String location;
     private EventCategoryResponseDTO category;
-    private BigDecimal rewardPerCheckin;
+    private Integer pointCostToRegister; 
+    private Integer totalRewardPoints;
     private BigDecimal totalBudgetCoin;
     private String status;
     private OffsetDateTime createdAt;
