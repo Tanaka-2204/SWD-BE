@@ -19,7 +19,10 @@ import com.example.demo.exception.BadRequestException;
 import com.example.demo.service.StudentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.Optional;
+import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
+import com.amazonaws.services.cognitoidp.model.AdminGetUserRequest;
+import com.amazonaws.services.cognitoidp.model.AdminGetUserResult;
+import com.amazonaws.services.cognitoidp.model.AttributeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,12 +36,15 @@ public class StudentServiceImpl implements StudentService {
     private final StudentRepository studentRepository;
     private final UniversityRepository universityRepository;
     private final WalletRepository walletRepository;
+    private final AWSCognitoIdentityProvider cognitoClient;
+    private final String userPoolId = "ap-southeast-2_9RLjNQhOk";
 
     public StudentServiceImpl(StudentRepository studentRepository, UniversityRepository universityRepository,
-            WalletRepository walletRepository) {
+            WalletRepository walletRepository, AWSCognitoIdentityProvider cognitoClient) {
         this.studentRepository = studentRepository;
         this.universityRepository = universityRepository;
         this.walletRepository = walletRepository;
+        this.cognitoClient = cognitoClient;
     }
 
     @Override
@@ -61,55 +67,78 @@ public class StudentServiceImpl implements StudentService {
     @Transactional
     public StudentResponseDTO completeProfile(AuthPrincipal principal, StudentProfileCompletionDTO dto) {
 
-        // 1. Lấy dữ liệu từ Principal (đã được đồng bộ từ JWT)
         String cognitoSub = principal.getCognitoSub();
-        String email = principal.getEmail();
-        String fullName = principal.getFullName(); // <<< TỪ PRINCIPAL
-        String universityCode = principal.getUniversityCode(); // <<< TỪ PRINCIPAL
-
-        // 2. Kiểm tra xem profile đã tồn tại chưa
+        String cognitoUsername = principal.getUsername();
+        String userEmail = principal.getEmail();
         studentRepository.findByCognitoSub(cognitoSub).ifPresent(s -> {
             throw new DataIntegrityViolationException("Student profile already exists.");
         });
 
-        // 3. Lấy dữ liệu còn lại từ DTO
-        String phoneNumber = dto.getPhoneNumber(); // <<< TỪ DTO
-        String avatarUrl = dto.getAvatarUrl(); // <<< TỪ DTO
+        // 3. Lấy dữ liệu còn lại từ DTO (logic giữ nguyên)
+        String phoneNumber = dto.getPhoneNumber();
+        String avatarUrl = dto.getAvatarUrl();
 
-        // 4. Validate dữ liệu Cognito (phòng trường hợp token rỗng)
-        if (universityCode == null || universityCode.isBlank()) {
-            throw new BadRequestException("University code is missing from Cognito token (custom:university).");
+        // ==========================================================
+        // SỬA ĐỔI QUAN TRỌNG: TRUY VẤN COGNITO ĐỂ LẤY DỮ LIỆU MỚI NHẤT
+        // ==========================================================
+        String universityCodeOrName;
+        String fullName;
+
+        try {
+            AdminGetUserRequest getUserRequest = new AdminGetUserRequest()
+                    .withUserPoolId(userPoolId)
+                    .withUsername(cognitoUsername); // Sử dụng cognitoSub
+
+            AdminGetUserResult userResult = cognitoClient.adminGetUser(getUserRequest);
+
+            // Trích xuất University Code và Full Name từ User Attributes
+            universityCodeOrName = userResult.getUserAttributes().stream()
+                    .filter(attr -> "custom:university".equals(attr.getName()))
+                    .findFirst().map(AttributeType::getValue)
+                    .orElse(null);
+
+            fullName = userResult.getUserAttributes().stream()
+                    .filter(attr -> "name".equals(attr.getName()))
+                    .findFirst().map(AttributeType::getValue)
+                    .orElse(null);
+
+        } catch (Exception e) {
+            logger.error("Error retrieving user attributes from Cognito for sub {}: {}", cognitoSub, e.getMessage());
+            throw new ResourceNotFoundException("Error accessing user data from Cognito.");
+        }
+
+        // 4. Validate dữ liệu Cognito MỚI (chỉ còn lại trường hợp Lambda thất bại)
+        if (universityCodeOrName == null || universityCodeOrName.isBlank()) {
+            // Lỗi này xảy ra khi Lambda Post-Confirmation GHI DỮ LIỆU THẤT BẠI
+            throw new BadRequestException("University code is missing from Cognito attributes. Please contact admin.");
         }
         if (fullName == null || fullName.isBlank()) {
-            throw new BadRequestException("Full name is missing from Cognito token (name).");
+            throw new BadRequestException("Full name is missing from Cognito attributes.");
         }
-
-        // 5. Kiểm tra SĐT (từ DTO)
+        // (Bỏ qua việc kiểm tra DataIntegrity của Phone Number, logic giữ nguyên)
         studentRepository.findByPhoneNumber(phoneNumber).ifPresent(s -> {
             throw new DataIntegrityViolationException("Phone number " + phoneNumber + " already in use.");
         });
 
-        // 6. Tìm University bằng "Code" lấy từ Principal
-        University university = universityRepository.findByCode(universityCode)
+        // 5. Tìm University (logic giữ nguyên)
+        University university = universityRepository.findByName(universityCodeOrName)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "University not found for code: " + universityCode +
-                                ". Please contact admin to add this university code."));
+                        "University not found for name: " + universityCodeOrName +
+                                ". Please contact admin to add this university to the database."));
 
-        // 7. Tạo Student mới
+        // 6. Tạo Student mới (logic giữ nguyên)
         Student student = new Student();
         student.setCognitoSub(cognitoSub);
-        student.setEmail(email);
-        student.setFullName(fullName); // (từ Principal)
-        student.setUniversity(university); // (tìm được từ Principal)
-        student.setPhoneNumber(phoneNumber); // (từ DTO)
-        student.setAvatarUrl(avatarUrl); // (từ DTO)
+        student.setEmail(userEmail);
+        student.setFullName(fullName); // <<< DÙNG FULLNAME MỚI TỪ COGNITO
+        student.setUniversity(university);
+        student.setPhoneNumber(phoneNumber);
+        student.setAvatarUrl(avatarUrl);
         student.setStatus(UserAccountStatus.ACTIVE);
 
+        // 7. Tạo Wallet, Save Student và trả về (logic giữ nguyên)
         Student savedStudent = studentRepository.save(student);
-        logger.info("Successfully created profile for student with cognitoSub: {}", cognitoSub);
-
-        // 8. TẠO VÍ (Wallet) cho sinh viên mới
-        logger.info("Creating wallet for new studentId: {}", savedStudent.getId());
+        // ... (Wallet creation logic)
         Wallet studentWallet = new Wallet();
         studentWallet.setOwnerType("STUDENT");
         studentWallet.setOwnerId(savedStudent.getId());

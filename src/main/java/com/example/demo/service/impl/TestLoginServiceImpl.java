@@ -19,8 +19,8 @@ public class TestLoginServiceImpl implements TestLoginService {
 
     private final AWSCognitoIdentityProvider cognitoClient;
 
-    @Value("${aws.cognito.userPoolClientId}")
-    private String userPoolClientId;
+    @Value("${AWS_COGNITO_APPCLIENTID}")
+    private String appClientId;
 
     public TestLoginServiceImpl(AWSCognitoIdentityProvider cognitoClient) {
         this.cognitoClient = cognitoClient;
@@ -41,7 +41,7 @@ public class TestLoginServiceImpl implements TestLoginService {
         // SỬ DỤNG USER_PASSWORD_AUTH (phải được bật trong App Client)
         authRequest.withAuthFlow(AuthFlowType.USER_PASSWORD_AUTH); 
         
-        authRequest.withClientId(userPoolClientId);
+        authRequest.withClientId(appClientId);
         authRequest.withAuthParameters(authParams);
 
         try {

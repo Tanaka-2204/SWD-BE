@@ -10,6 +10,7 @@ import org.springframework.security.core.GrantedAuthority;
 @SuppressWarnings("serial")
 public class AuthPrincipal {
     private String cognitoSub;
+    private String username;
     private String email;
     private Collection<GrantedAuthority> authorities;
     
@@ -27,10 +28,11 @@ public class AuthPrincipal {
      * Đây là hàm khởi tạo (constructor) 9 tham số mà Resolver đang gọi.
      * Hãy đảm bảo tệp của bạn có chính xác hàm này.
      */
-    public AuthPrincipal(String cognitoSub, String email, Collection<GrantedAuthority> authorities, 
+    public AuthPrincipal(String cognitoSub, String username, String email, Collection<GrantedAuthority> authorities, 
                          String fullName, String universityCode, String phoneNumber,
                          Long studentId, Long partnerId, Long adminId) {
         this.cognitoSub = cognitoSub;
+        this.username = username;
         this.email = email;
         this.authorities = authorities;
         this.fullName = fullName;
@@ -43,6 +45,7 @@ public class AuthPrincipal {
     
     // Getters
     public String getCognitoSub() { return cognitoSub; }
+    public String getUsername() { return username; }
     public String getEmail() { return email; }
     public Collection<GrantedAuthority> getAuthorities() { return authorities; }
     public String getFullName() { return fullName; }
