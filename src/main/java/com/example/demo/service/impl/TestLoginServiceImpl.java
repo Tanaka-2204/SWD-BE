@@ -48,10 +48,10 @@ public class TestLoginServiceImpl implements TestLoginService {
 
     @Override
     public TestLoginResponseDTO loginForTest(TestLoginRequestDTO requestDTO) {
-        logger.warn("Performing test login for user: {}", requestDTO.getUsername());
+        logger.warn("Performing test login for user: {}", requestDTO.getEmail());
 
         Map<String, String> authParams = new HashMap<>();
-        authParams.put("USERNAME", requestDTO.getUsername());
+        authParams.put("USERNAME", requestDTO.getEmail());
         authParams.put("PASSWORD", requestDTO.getPassword());
         
         // Chúng ta dùng ADMIN_NO_SRP_AUTH, một flow admin không cần tính toán SRP
@@ -70,17 +70,17 @@ public class TestLoginServiceImpl implements TestLoginService {
                 throw new BadRequestException("Cognito did not return an access token.");
             }
 
-            logger.warn("Test login successful for user: {}", requestDTO.getUsername());
+            logger.warn("Test login successful for user: {}", requestDTO.getEmail());
             return new TestLoginResponseDTO(
                 authResult.getAccessToken(),
                 authResult.getIdToken()
             );
 
         } catch (UserNotFoundException e) {
-            logger.error("Test login failed: User {} not found", requestDTO.getUsername());
+            logger.error("Test login failed: User {} not found", requestDTO.getEmail());
             throw new ResourceNotFoundException("User not found.");
         } catch (NotAuthorizedException e) {
-            logger.error("Test login failed: Incorrect username or password for user {}", requestDTO.getUsername());
+            logger.error("Test login failed: Incorrect username or password for user {}", requestDTO.getEmail());
             throw new BadRequestException("Incorrect username or password.");
         } catch (Exception e) {
             logger.error("Cognito auth error: {}", e.getMessage());

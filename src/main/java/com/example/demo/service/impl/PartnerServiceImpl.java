@@ -239,7 +239,7 @@ public class PartnerServiceImpl implements PartnerService {
 
         return convertToDTO(updatedPartner);
     }
-    
+
     @Override
     @Transactional
     public void deletePartner(Long partnerId) {
@@ -262,6 +262,7 @@ public class PartnerServiceImpl implements PartnerService {
         dto.setContactEmail(partner.getContactEmail());
         dto.setContactPhone(partner.getContactPhone());
         dto.setCreatedAt(partner.getCreatedAt());
+        dto.setStatus(partner.getStatus().name());
         if (partner.getWallet() != null) {
             dto.setWalletId(partner.getWallet().getId());
         }

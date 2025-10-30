@@ -1,5 +1,6 @@
 package com.example.demo.service.impl;
 
+import com.example.demo.config.AuthPrincipal;
 import com.example.demo.dto.request.StudentProfileCompletionDTO;
 import com.example.demo.dto.request.StudentProfileUpdateDTO;
 import com.example.demo.dto.request.UserStatusUpdateDTO;
@@ -8,6 +9,9 @@ import com.example.demo.entity.Student;
 import com.example.demo.entity.University;
 import com.example.demo.exception.DataIntegrityViolationException;
 import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.entity.Wallet; // <<< THÊM IMPORT
+import com.example.demo.repository.WalletRepository; // <<< THÊM IMPORT
+import java.math.BigDecimal;
 import com.example.demo.repository.StudentRepository;
 import com.example.demo.repository.UniversityRepository;
 import com.example.demo.entity.enums.UserAccountStatus; // <<< THÊM IMPORT
@@ -15,11 +19,11 @@ import com.example.demo.exception.BadRequestException;
 import com.example.demo.service.StudentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.Optional;
 
 @Service
 public class StudentServiceImpl implements StudentService {
@@ -28,10 +32,13 @@ public class StudentServiceImpl implements StudentService {
 
     private final StudentRepository studentRepository;
     private final UniversityRepository universityRepository;
+    private final WalletRepository walletRepository;
 
-    public StudentServiceImpl(StudentRepository studentRepository, UniversityRepository universityRepository) {
+    public StudentServiceImpl(StudentRepository studentRepository, UniversityRepository universityRepository,
+            WalletRepository walletRepository) {
         this.studentRepository = studentRepository;
         this.universityRepository = universityRepository;
+        this.walletRepository = walletRepository;
     }
 
     @Override
@@ -50,39 +57,65 @@ public class StudentServiceImpl implements StudentService {
         return toResponseDTO(student);
     }
 
+    @Override
     @Transactional
-    public StudentResponseDTO completeProfile(String cognitoSub, String email, StudentProfileCompletionDTO dto) {
-        // 1. Kiểm tra xem student với cognitoSub này đã tồn tại chưa
-        Optional<Student> existingStudentOpt = studentRepository.findByCognitoSub(cognitoSub);
+    public StudentResponseDTO completeProfile(AuthPrincipal principal, StudentProfileCompletionDTO dto) {
 
-        if (existingStudentOpt.isPresent()) {
-            logger.warn("Profile for cognitoSub {} already exists. Updates are not allowed via this endpoint.",
-                    cognitoSub);
-            // Có thể trả về lỗi hoặc thông tin user đã tồn tại
+        // 1. Lấy dữ liệu từ Principal (đã được đồng bộ từ JWT)
+        String cognitoSub = principal.getCognitoSub();
+        String email = principal.getEmail();
+        String fullName = principal.getFullName(); // <<< TỪ PRINCIPAL
+        String universityCode = principal.getUniversityCode(); // <<< TỪ PRINCIPAL
+
+        // 2. Kiểm tra xem profile đã tồn tại chưa
+        studentRepository.findByCognitoSub(cognitoSub).ifPresent(s -> {
             throw new DataIntegrityViolationException("Student profile already exists.");
-        }
-
-        // 2. Kiểm tra SĐT đã được sử dụng chưa
-        studentRepository.findByPhoneNumber(dto.getPhoneNumber()).ifPresent(s -> {
-            throw new DataIntegrityViolationException("Phone number already in use: " + dto.getPhoneNumber());
         });
 
-        // 3. Tìm trường đại học
-        University university = universityRepository.findById(dto.getUniversityId())
-                .orElseThrow(
-                        () -> new ResourceNotFoundException("University not found with id: " + dto.getUniversityId()));
+        // 3. Lấy dữ liệu còn lại từ DTO
+        String phoneNumber = dto.getPhoneNumber(); // <<< TỪ DTO
+        String avatarUrl = dto.getAvatarUrl(); // <<< TỪ DTO
 
-        // 4. Tạo student mới và liên kết với cognitoSub
+        // 4. Validate dữ liệu Cognito (phòng trường hợp token rỗng)
+        if (universityCode == null || universityCode.isBlank()) {
+            throw new BadRequestException("University code is missing from Cognito token (custom:university).");
+        }
+        if (fullName == null || fullName.isBlank()) {
+            throw new BadRequestException("Full name is missing from Cognito token (name).");
+        }
+
+        // 5. Kiểm tra SĐT (từ DTO)
+        studentRepository.findByPhoneNumber(phoneNumber).ifPresent(s -> {
+            throw new DataIntegrityViolationException("Phone number " + phoneNumber + " already in use.");
+        });
+
+        // 6. Tìm University bằng "Code" lấy từ Principal
+        University university = universityRepository.findByCode(universityCode)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "University not found for code: " + universityCode +
+                                ". Please contact admin to add this university code."));
+
+        // 7. Tạo Student mới
         Student student = new Student();
-        student.setCognitoSub(cognitoSub); // Liên kết quan trọng!
-        student.setEmail(email); // Lấy từ token
-        student.setUniversity(university);
-        student.setFullName(dto.getFullName());
-        student.setPhoneNumber(dto.getPhoneNumber());
-        student.setAvatarUrl(dto.getAvatarUrl());
+        student.setCognitoSub(cognitoSub);
+        student.setEmail(email);
+        student.setFullName(fullName); // (từ Principal)
+        student.setUniversity(university); // (tìm được từ Principal)
+        student.setPhoneNumber(phoneNumber); // (từ DTO)
+        student.setAvatarUrl(avatarUrl); // (từ DTO)
+        student.setStatus(UserAccountStatus.ACTIVE);
 
         Student savedStudent = studentRepository.save(student);
         logger.info("Successfully created profile for student with cognitoSub: {}", cognitoSub);
+
+        // 8. TẠO VÍ (Wallet) cho sinh viên mới
+        logger.info("Creating wallet for new studentId: {}", savedStudent.getId());
+        Wallet studentWallet = new Wallet();
+        studentWallet.setOwnerType("STUDENT");
+        studentWallet.setOwnerId(savedStudent.getId());
+        studentWallet.setBalance(BigDecimal.ZERO);
+        studentWallet.setCurrency("COIN");
+        walletRepository.save(studentWallet);
 
         return toResponseDTO(savedStudent);
     }
@@ -143,7 +176,7 @@ public class StudentServiceImpl implements StudentService {
 
         return toResponseDTO(updatedStudent);
     }
-    
+
     // Helper method to convert Student Entity to StudentResponseDTO
     StudentResponseDTO toResponseDTO(Student student) {
         StudentResponseDTO dto = new StudentResponseDTO();
@@ -153,6 +186,7 @@ public class StudentServiceImpl implements StudentService {
         dto.setEmail(student.getEmail());
         dto.setAvatarUrl(student.getAvatarUrl());
         dto.setCreatedAt(student.getCreatedAt());
+        dto.setStatus(student.getStatus().name());
 
         University university = student.getUniversity();
         if (university != null) {

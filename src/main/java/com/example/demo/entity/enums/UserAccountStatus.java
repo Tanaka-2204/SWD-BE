@@ -10,5 +10,5 @@ public enum UserAccountStatus {
      * Tài khoản đã bị quản trị viên đình chỉ,
      * có thể đăng nhập nhưng không thể thực hiện các hành động chính.
      */
-    SUSPENDED
+    INACTIVE,
 }

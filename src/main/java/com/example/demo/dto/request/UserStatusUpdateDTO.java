@@ -9,8 +9,8 @@ public class UserStatusUpdateDTO {
 
     @NotBlank(message = "Status is required.")
     @Pattern(
-        regexp = "^(ACTIVE|SUSPENDED)$", 
-        message = "Status must be either 'ACTIVE' or 'SUSPENDED'"
+        regexp = "^(ACTIVE|INACTIVE)$", 
+        message = "Status must be either 'ACTIVE' or 'INACTIVE'"
     )
     private String status;
 }

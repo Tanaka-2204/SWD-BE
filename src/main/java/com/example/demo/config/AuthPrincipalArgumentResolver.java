@@ -48,48 +48,56 @@ public class AuthPrincipalArgumentResolver implements HandlerMethodArgumentResol
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                                   NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
         
-        // 1. Lấy đối tượng Authentication (giữ nguyên)
+        // 1. Lấy đối tượng Authentication (đang bị thiếu)
+        // ==========================================================
+        // 🔥 THÊM DÒNG NÀY ĐỂ SỬA LỖI:
         Authentication auth = (Authentication) webRequest.getUserPrincipal();
+        // ==========================================================
+        
+        // 2. Kiểm tra auth
         if (auth == null || !(auth instanceof JwtAuthenticationToken)) {
-            return null;
+            return null; // Không có danh tính hoặc không phải JWT
         }
 
-        // 2. Ép kiểu và lấy thông tin cơ bản (giữ nguyên)
-        JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) auth;
+        // 3. Ép kiểu và lấy thông tin cơ bản
+        JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) auth; // Dòng này bây giờ sẽ hết lỗi
         Jwt jwt = jwtAuth.getToken();
         Collection<GrantedAuthority> authorities = jwtAuth.getAuthorities();
+
+        // 4. Lấy thông tin cơ bản VÀ DỮ LIỆU ĐỒNG BỘ
         String cognitoSub = jwt.getSubject();
         String email = jwt.getClaimAsString("email");
+        String fullName = jwt.getClaimAsString("name");
+        String universityCode = jwt.getClaimAsString("custom:university");
+        String phoneNumber = jwt.getClaimAsString("phone_number");
 
-        // 4. "Phiên dịch" ID dựa trên VAI TRÒ (ROLE) <<< LOGIC MỚI
+        // 5. "Phiên dịch" ID (Logic này giữ nguyên)
         Long studentId = null;
         Long partnerId = null;
         Long adminId = null;
-
-        // Biến đổi authorities về Set<String> để dễ kiểm tra
+        
         Set<String> roles = authorities.stream()
                                     .map(GrantedAuthority::getAuthority)
                                     .collect(Collectors.toSet());
 
         if (roles.contains("ROLE_ADMIN")) {
-            // Nếu là Admin, tìm trong bảng admin
             adminId = adminRepository.findByCognitoSub(cognitoSub)
                                      .map(Admin::getId)
                                      .orElse(null);
-            
         } else if (roles.contains("ROLE_PARTNERS")) {
-            // Nếu là Partner, tìm trong bảng partner
             partnerId = partnerRepository.findByCognitoSub(cognitoSub)
                                          .map(Partner::getId)
                                          .orElse(null);
         } else {
-            // Mặc định là Student
+            // Chỉ TÌM, không TẠO ở đây
             studentId = studentRepository.findByCognitoSub(cognitoSub)
                                          .map(Student::getId)
                                          .orElse(null);
         }
 
-        // 5. Tạo và trả về đối tượng AuthPrincipal tùy chỉnh
-        return new AuthPrincipal(cognitoSub, email, authorities, studentId, partnerId, adminId);
+        // 6. Tạo AuthPrincipal với đầy đủ thông tin
+        return new AuthPrincipal(cognitoSub, email, authorities, 
+                                 fullName, universityCode, phoneNumber,
+                                 studentId, partnerId, adminId);
     }
 }

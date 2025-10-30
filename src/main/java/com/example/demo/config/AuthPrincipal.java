@@ -1,29 +1,41 @@
 package com.example.demo.config;
 
 import java.util.Collection;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.springframework.security.core.GrantedAuthority;
 
 /**
  * Lớp này sẽ được inject vào Controller thay vì Jwt.
- * Đã được nâng cấp để chứa ID của cả 3 vai trò (chỉ 1 trong 3 có giá trị).
+ * Chứa thông tin đồng bộ từ Cognito và ID của cả 3 vai trò.
  */
+@SuppressWarnings("serial")
 public class AuthPrincipal {
     private String cognitoSub;
     private String email;
     private Collection<GrantedAuthority> authorities;
     
+    // Dữ liệu đồng bộ từ JWT (Cognito Attributes)
+    private String fullName;
+    private String universityCode; // (từ custom:university)
+    private String phoneNumber;    // (từ phone_number)
+
     // ID cơ sở dữ liệu nội bộ (chỉ 1 trong 3 sẽ có giá trị)
     private Long studentId; 
     private Long partnerId;
     private Long adminId;
 
+    /**
+     * Đây là hàm khởi tạo (constructor) 9 tham số mà Resolver đang gọi.
+     * Hãy đảm bảo tệp của bạn có chính xác hàm này.
+     */
     public AuthPrincipal(String cognitoSub, String email, Collection<GrantedAuthority> authorities, 
+                         String fullName, String universityCode, String phoneNumber,
                          Long studentId, Long partnerId, Long adminId) {
         this.cognitoSub = cognitoSub;
         this.email = email;
         this.authorities = authorities;
+        this.fullName = fullName;
+        this.universityCode = universityCode;
+        this.phoneNumber = phoneNumber;
         this.studentId = studentId;
         this.partnerId = partnerId;
         this.adminId = adminId;
@@ -33,6 +45,9 @@ public class AuthPrincipal {
     public String getCognitoSub() { return cognitoSub; }
     public String getEmail() { return email; }
     public Collection<GrantedAuthority> getAuthorities() { return authorities; }
+    public String getFullName() { return fullName; }
+    public String getUniversityCode() { return universityCode; }
+    public String getPhoneNumber() { return phoneNumber; }
     public Long getStudentId() { return studentId; }
     public Long getPartnerId() { return partnerId; }
     public Long getAdminId() { return adminId; }

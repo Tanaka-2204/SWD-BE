@@ -1,7 +1,6 @@
 package com.example.demo.controller;
 
 import com.example.demo.config.AuthPrincipal;
-import com.example.demo.dto.request.StudentProfileCompletionDTO;
 import com.example.demo.dto.request.StudentProfileUpdateDTO;
 import com.example.demo.dto.response.StudentResponseDTO;
 import com.example.demo.service.StudentService;
@@ -26,26 +25,6 @@ public class StudentController {
 
     public StudentController(StudentService studentService) {
         this.studentService = studentService;
-    }
-
-    @Operation(summary = "Complete student profile after Cognito registration", description = "This endpoint is called once after a new user registers with Cognito to create their corresponding profile in the database. Requires authentication.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Profile created successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid input data"),
-            @ApiResponse(responseCode = "409", description = "Phone number already in use or profile already exists")
-    })
-    @PostMapping("/complete-profile")
-    public ResponseEntity<StudentResponseDTO> completeProfile(
-            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal, // <<< SỬA Ở ĐÂY
-            @Valid @RequestBody StudentProfileCompletionDTO completionDTO) {
-
-        // Dùng cognitoSub và email trực tiếp từ principal
-        StudentResponseDTO newStudent = studentService.completeProfile(
-            principal.getCognitoSub(), 
-            principal.getEmail(), 
-            completionDTO
-        );
-        return new ResponseEntity<>(newStudent, HttpStatus.CREATED);
     }
 
     @Operation(summary = "Get current student's profile (Me)", description = "Retrieves the profile details of the currently authenticated student.")

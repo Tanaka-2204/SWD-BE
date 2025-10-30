@@ -8,8 +8,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-import com.example.demo.entity.enums.UserAccountStatus; // <<< THÊM IMPORT NÀY
-import jakarta.persistence.EnumType; // <<< THÊM IMPORT NÀY
+import jakarta.persistence.EnumType; 
 import jakarta.persistence.Enumerated;
 import java.time.OffsetDateTime;
 
