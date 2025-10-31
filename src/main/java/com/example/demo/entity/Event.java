@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
@@ -32,11 +34,9 @@ public class Event {
     @Column(name = "description")
     private String description;
 
-    @NotNull
     @Column(name = "start_time", nullable = false)
     private OffsetDateTime startTime;
 
-    @NotNull
     @Column(name = "end_time", nullable = false)
     private OffsetDateTime endTime;
 
@@ -48,6 +48,10 @@ public class Event {
     @JoinColumn(name = "category_id")
     private EventCategory category;
 
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "wallet_id", referencedColumnName = "wallet_id")
+    private Wallet wallet;
+    
     @ColumnDefault("0")
     @Column(name = "point_cost_to_register", nullable = false) 
     private Integer pointCostToRegister;
@@ -64,7 +68,7 @@ public class Event {
     @Column(name = "status", length = 30)
     private String status;
 
-    @ColumnDefault("now()")
+    @CreationTimestamp
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
 

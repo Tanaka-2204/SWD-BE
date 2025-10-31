@@ -20,4 +20,5 @@ public interface StudentService {
     Page<StudentResponseDTO> getAllStudents(Pageable pageable);
 
     StudentResponseDTO updateStudentStatus(Long studentId, UserStatusUpdateDTO dto);
+    
 }

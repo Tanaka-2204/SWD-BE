@@ -3,16 +3,18 @@ package com.example.demo.service.impl;
 import com.example.demo.dto.request.BroadcastRequestDTO;
 import com.example.demo.dto.response.EventBroadcastResponseDTO;
 import com.example.demo.entity.BroadcastDelivery;
+import com.example.demo.entity.Checkin; // <<< SỬA ĐỔI: Import Checkin
 import com.example.demo.entity.Event;
 import com.example.demo.entity.EventBroadcast;
-import com.example.demo.entity.Registration;
+// import com.example.demo.entity.Registration; // <<< XÓA
 import com.example.demo.exception.ForbiddenException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.BroadcastDeliveryRepository;
 import com.example.demo.repository.EventBroadcastRepository;
 import com.example.demo.repository.EventRepository;
 import com.example.demo.repository.PartnerRepository;
-import com.example.demo.repository.RegistrationRepository;
+import com.example.demo.repository.CheckinRepository; // <<< SỬA ĐỔI: Dùng CheckinRepository
+// import com.example.demo.repository.RegistrationRepository; // <<< XÓA
 import com.example.demo.service.BroadcastService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,14 +27,19 @@ public class BroadcastServiceImpl implements BroadcastService {
 
     private final PartnerRepository partnerRepository;
     private final EventRepository eventRepository;
-    private final RegistrationRepository registrationRepository;
+    private final CheckinRepository checkinRepository; // <<< SỬA ĐỔI
     private final EventBroadcastRepository eventBroadcastRepository;
     private final BroadcastDeliveryRepository broadcastDeliveryRepository;
 
-    public BroadcastServiceImpl(PartnerRepository partnerRepository, EventRepository eventRepository, RegistrationRepository registrationRepository, EventBroadcastRepository eventBroadcastRepository, BroadcastDeliveryRepository broadcastDeliveryRepository) {
+    // <<< SỬA ĐỔI HÀM TẠO (Constructor)
+    public BroadcastServiceImpl(PartnerRepository partnerRepository, 
+                                EventRepository eventRepository, 
+                                CheckinRepository checkinRepository, // <<< SỬA ĐỔI
+                                EventBroadcastRepository eventBroadcastRepository, 
+                                BroadcastDeliveryRepository broadcastDeliveryRepository) {
         this.partnerRepository = partnerRepository;
         this.eventRepository = eventRepository;
-        this.registrationRepository = registrationRepository;
+        this.checkinRepository = checkinRepository; // <<< SỬA ĐỔI
         this.eventBroadcastRepository = eventBroadcastRepository;
         this.broadcastDeliveryRepository = broadcastDeliveryRepository;
     }
@@ -55,17 +62,17 @@ public class BroadcastServiceImpl implements BroadcastService {
         broadcast.setMessageContent(requestDTO.getMessageContent());
         EventBroadcast savedBroadcast = eventBroadcastRepository.save(broadcast);
 
-        // 4. Lấy danh sách sinh viên đã đăng ký
-        List<Registration> registrations = registrationRepository.findAllByEventId(event.getId());
+        // 4. Lấy danh sách sinh viên đã đăng ký (TỪ BẢNG CHECKIN)
+        // <<< SỬA ĐỔI LOGIC LẤY DANH SÁCH
+        List<Checkin> checkins = checkinRepository.findAllByEventId(event.getId());
 
         // 5. Tạo các bản ghi delivery cho từng sinh viên
-        // (Đây là logic nặng, nên được đưa vào @Async trong tương lai)
-        if (!registrations.isEmpty()) {
-            List<BroadcastDelivery> deliveries = registrations.stream()
-                    .map(registration -> {
+        if (!checkins.isEmpty()) {
+            List<BroadcastDelivery> deliveries = checkins.stream() // <<< SỬA ĐỔI: Dùng checkins
+                    .map(checkin -> { // <<< SỬA ĐỔI: Dùng checkin
                         BroadcastDelivery delivery = new BroadcastDelivery();
                         delivery.setBroadcast(savedBroadcast);
-                        delivery.setStudent(registration.getStudent());
+                        delivery.setStudent(checkin.getStudent()); // <<< SỬA ĐỔI: Lấy student từ checkin
                         delivery.setStatus("SENT"); // Trạng thái ban đầu
                         return delivery;
                     })
@@ -79,7 +86,7 @@ public class BroadcastServiceImpl implements BroadcastService {
         return convertToDTO(savedBroadcast);
     }
     
-    // Helper method đã được hoàn thiện
+    // Helper method (Giữ nguyên)
     private EventBroadcastResponseDTO convertToDTO(EventBroadcast broadcast) {
         EventBroadcastResponseDTO dto = new EventBroadcastResponseDTO();
         dto.setId(broadcast.getId());

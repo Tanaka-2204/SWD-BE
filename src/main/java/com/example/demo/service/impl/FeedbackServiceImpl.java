@@ -9,39 +9,46 @@ import com.example.demo.service.FeedbackService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+// <<< SỬA ĐỔI: Thêm import
+import com.example.demo.repository.CheckinRepository; 
+
 @Service
 public class FeedbackServiceImpl implements FeedbackService {
 
     private final FeedbackRepository feedbackRepository;
     private final StudentRepository studentRepository;
     private final EventRepository eventRepository;
-    private final RegistrationRepository registrationRepository;
+    // private final RegistrationRepository registrationRepository; // <<< XÓA
+    private final CheckinRepository checkinRepository; // <<< SỬA ĐỔI: Thay thế
 
+    // <<< SỬA ĐỔI HÀM TẠO (Constructor)
     public FeedbackServiceImpl(FeedbackRepository feedbackRepository, StudentRepository studentRepository,
-            EventRepository eventRepository, RegistrationRepository registrationRepository) {
+                               EventRepository eventRepository, CheckinRepository checkinRepository) {
         this.feedbackRepository = feedbackRepository;
         this.studentRepository = studentRepository;
         this.eventRepository = eventRepository;
-        this.registrationRepository = registrationRepository;
+        this.checkinRepository = checkinRepository; // <<< SỬA ĐỔI
     }
 
     @Override
     @Transactional
     public FeedbackResponseDTO createFeedback(Long studentId, Long eventId, FeedbackRequestDTO requestDTO) {
 
-        // 1. Tìm sinh viên (Bây giờ dùng ID nội bộ, không cần sub)
+        // 1. Tìm sinh viên (Giữ nguyên)
         Student student = studentRepository.findById(studentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Student not found.")); // Lỗi này không nên xảy ra nếu
-                                                                                         // logic security đúng
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found.")); 
 
         // 2. Tìm sự kiện (Giữ nguyên)
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventId));
 
-        // 3. (Quan trọng) Kiểm tra xem sinh viên đã tham gia sự kiện này chưa (Giữ
-        // nguyên)
-        registrationRepository.findByStudentIdAndEventId(student.getId(), eventId)
-                .orElseThrow(() -> new ForbiddenException("You did not register for this event."));
+        // 3. (Quan trọng) Kiểm tra xem sinh viên đã đăng ký sự kiện này chưa
+        // <<< SỬA ĐỔI LOGIC: Dùng CheckinRepository
+        boolean isRegistered = checkinRepository.existsByEventIdAndStudentId(student.getId(), eventId);
+        if (!isRegistered) {
+             throw new ForbiddenException("You did not register for this event.");
+        }
+        // <<< KẾT THÚC SỬA ĐỔI
 
         // 4. Kiểm tra xem đã feedback chưa (Giữ nguyên)
         feedbackRepository.findByStudentIdAndEventId(student.getId(), eventId).ifPresent(f -> {
@@ -55,15 +62,12 @@ public class FeedbackServiceImpl implements FeedbackService {
         feedback.setRating(requestDTO.getRating());
         feedback.setComments(requestDTO.getComments());
 
-        // TODO: Phân tích cảm xúc (sentiment analysis) cho comments nếu cần
-        // feedback.setSentimentLabel(analyzeSentiment(requestDTO.getComments()));
-
         Feedback savedFeedback = feedbackRepository.save(feedback);
 
         return convertToDTO(savedFeedback);
     }
 
-    // Helper
+    // Helper (Giữ nguyên)
     private FeedbackResponseDTO convertToDTO(Feedback feedback) {
         FeedbackResponseDTO dto = new FeedbackResponseDTO();
         dto.setId(feedback.getId());

@@ -44,63 +44,86 @@ public class EventFundingServiceImpl implements EventFundingService {
             throw new ResourceNotFoundException("Wallet not found for partner: " + partnerId);
         }
 
-        // 2. Lấy Sự kiện
+        // 2. Lấy Sự kiện VÀ VÍ SỰ KIỆN
         Event event = eventRepository.findById(requestDTO.getEventId())
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + requestDTO.getEventId()));
 
-        // 3. Kiểm tra quyền: Partner này có phải người tổ chức sự kiện không?
+        // <<< SỬA ĐỔI: Lấy ví của Event
+        Wallet eventWallet = event.getWallet();
+        if (eventWallet == null) {
+            // (Bạn nên có logic tạo ví cho sự kiện khi sự kiện được tạo)
+            throw new ResourceNotFoundException("Event Wallet not found for this event. Event might not be initialized properly.");
+        }
+
+        // 3. Kiểm tra quyền (Giữ nguyên)
         if (!event.getPartner().getId().equals(partnerId)) {
             throw new ForbiddenException("Partner does not own this event.");
         }
 
-        // 4. Kiểm tra số dư
+        // 4. Kiểm tra số dư Partner (Giữ nguyên)
         if (partnerWallet.getBalance().compareTo(amount) < 0) {
             throw new DataIntegrityViolationException(
                     "Insufficient funds. Partner balance is: " + partnerWallet.getBalance());
         }
 
-        // 5. Thực hiện giao dịch và Cập nhật ngân sách
-        // Trừ tiền ví Partner
+        // 5. <<< SỬA ĐỔI: Thực hiện giao dịch (Partner -> Event)
+        
+        // 5.1. Trừ tiền ví Partner
         partnerWallet.setBalance(partnerWallet.getBalance().subtract(amount));
-        walletRepository.save(partnerWallet);
+        
+        // 5.2. Cộng tiền vào VÍ EVENT
+        eventWallet.setBalance(eventWallet.getBalance().add(amount));
 
-        // Cộng ngân sách vào Event
+        // 5.3. Cập nhật tổng ngân sách (chỉ để theo dõi)
         BigDecimal newTotalBudget = event.getTotalBudgetCoin().add(amount);
         event.setTotalBudgetCoin(newTotalBudget);
 
-        // 5.1. TÍNH TOÁN MAX ATTENDEES (SỬ DỤNG totalRewardPoints)
+        // 5.4. TÍNH TOÁN MAX ATTENDEES (Giữ nguyên logic cũ)
         Integer totalRewardPoints = event.getTotalRewardPoints(); 
         BigDecimal rewardPerAttendee = totalRewardPoints != null ? new BigDecimal(totalRewardPoints) : BigDecimal.ZERO;
 
-        // Chỉ tính MaxAttendees nếu điểm thưởng > 0 (nghĩa là ngân sách này dùng để thưởng)
         if (rewardPerAttendee.compareTo(BigDecimal.ZERO) > 0) {
-            // Chia Tổng Ngân sách (Coin) cho Điểm thưởng trên mỗi người, làm tròn xuống
             Integer maxSlots = newTotalBudget.divide(rewardPerAttendee, 0, RoundingMode.FLOOR).intValue();
             event.setMaxAttendees(maxSlots);
         } else {
-            // Nếu không có thưởng, không thể xác định max attendees từ ngân sách, đặt là 0
             event.setMaxAttendees(0); 
         }
         
-        eventRepository.save(event); // Lưu sự kiện
+        // 5.5. Lưu các thay đổi
+        walletRepository.save(partnerWallet);
+        walletRepository.save(eventWallet); // <<< SỬA ĐỔI: Lưu ví event
+        eventRepository.save(event); 
 
-        // 6. Ghi lại lịch sử cấp vốn
+        // 6. Ghi lại lịch sử cấp vốn (Giữ nguyên)
         EventFunding funding = new EventFunding();
         funding.setPartner(partner);
         funding.setEvent(event);
         funding.setAmountCoin(amount);
         EventFunding savedFunding = eventFundingRepository.save(funding);
 
-        // 7. Ghi lại lịch sử giao dịch ví (cho Partner)
-        WalletTransaction transaction = new WalletTransaction();
-        transaction.setWallet(partnerWallet);
-        transaction.setTxnType("PARTNER_FUND_EVENT");
-        transaction.setAmount(amount.negate()); // Ghi âm (trừ tiền)
-        transaction.setReferenceType("EVENT_FUNDING");
-        transaction.setReferenceId(savedFunding.getId());
-        transactionRepository.save(transaction);
+        // 7. <<< SỬA ĐỔI: Ghi lại 2 giao dịch ví (Partner và Event)
+        
+        // 7.1. Giao dịch cho Partner (Trừ tiền)
+        WalletTransaction partnerTx = new WalletTransaction();
+        partnerTx.setWallet(partnerWallet);
+        partnerTx.setCounterparty(eventWallet); // <<< Đối tác là Ví Event
+        partnerTx.setTxnType("FUND_EVENT"); // (Partner chi tiền)
+        partnerTx.setAmount(amount.negate()); // Ghi âm
+        partnerTx.setReferenceType("EVENT_FUNDING");
+        partnerTx.setReferenceId(savedFunding.getId());
+        transactionRepository.save(partnerTx);
+        
+        // 7.2. Giao dịch cho Event (Nhận tiền)
+        WalletTransaction eventTx = new WalletTransaction();
+        eventTx.setWallet(eventWallet);
+        eventTx.setCounterparty(partnerWallet); // <<< Đối tác là Ví Partner
+        eventTx.setTxnType("RECEIVE_FUNDING"); // (Event nhận tiền)
+        eventTx.setAmount(amount); // Ghi dương
+        eventTx.setReferenceType("EVENT_FUNDING");
+        eventTx.setReferenceId(savedFunding.getId());
+        transactionRepository.save(eventTx);
 
-        // 8. Trả về DTO
+        // 8. Trả về DTO (Giữ nguyên)
         return convertToDTO(savedFunding);
     }
 

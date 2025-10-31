@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.config.AuthPrincipal;
 import com.example.demo.dto.request.EventCreateDTO;
 import com.example.demo.dto.request.EventUpdateDTO;
 import com.example.demo.dto.response.EventResponseDTO;
@@ -19,9 +20,9 @@ public interface EventService {
 
     Page<EventResponseDTO> getAllEvents(Specification<Event> spec, Pageable pageable);
 
-    EventResponseDTO updateEvent(Long eventId, EventUpdateDTO requestDTO);
+    EventResponseDTO updateEvent(Long eventId, EventUpdateDTO requestDTO, AuthPrincipal principal);
 
-    void deleteEvent(Long eventId);
+    void deleteEvent(Long eventId, AuthPrincipal principal);
     
     // --- Business Logic Methods ---
     Page<EventResponseDTO> getEventsByPartner(Long partnerId, Pageable pageable);
@@ -43,5 +44,5 @@ public interface EventService {
      * @param eventId ID của sự kiện cần hoàn tất
      * @return EventResponseDTO của sự kiện đã được cập nhật trạng thái
      */
-    EventResponseDTO finalizeEvent(Long eventId);
+    EventResponseDTO finalizeEvent(Long eventId, AuthPrincipal principal);
 }
