@@ -78,7 +78,41 @@ public class BroadcastServiceImpl implements BroadcastService {
 
         return convertToDTO(savedBroadcast);
     }
-    
+
+    @Override
+    @Transactional
+    public EventBroadcastResponseDTO sendSystemBroadcast(BroadcastRequestDTO requestDTO) {
+        // 1. Tạo bản ghi broadcast chính (không liên kết với event cụ thể)
+        EventBroadcast broadcast = new EventBroadcast();
+        broadcast.setMessageContent(requestDTO.getMessageContent());
+        // Có thể set eventId = null hoặc tạo field riêng cho system broadcast
+        EventBroadcast savedBroadcast = eventBroadcastRepository.save(broadcast);
+
+        // 2. Lấy tất cả sinh viên trong hệ thống (giả sử có StudentRepository)
+        // Giả sử có StudentRepository để lấy tất cả sinh viên
+        // List<Student> allStudents = studentRepository.findAll();
+
+        // Vì chưa có StudentRepository trong code hiện tại, tạm thời tạo logic giả
+        // Trong thực tế, cần inject StudentRepository và lấy tất cả sinh viên
+
+        // 3. Tạo delivery cho tất cả sinh viên
+        // List<BroadcastDelivery> deliveries = allStudents.stream()
+        //     .map(student -> {
+        //         BroadcastDelivery delivery = new BroadcastDelivery();
+        //         delivery.setBroadcast(savedBroadcast);
+        //         delivery.setStudent(student);
+        //         delivery.setStatus("SENT");
+        //         return delivery;
+        //     })
+        //     .collect(Collectors.toList());
+
+        // broadcastDeliveryRepository.saveAll(deliveries);
+
+        // (Trong tương lai, trigger gửi Push Notification/Email cho tất cả sinh viên)
+
+        return convertToDTO(savedBroadcast);
+    }
+
     // Helper method đã được hoàn thiện
     private EventBroadcastResponseDTO convertToDTO(EventBroadcast broadcast) {
         EventBroadcastResponseDTO dto = new EventBroadcastResponseDTO();

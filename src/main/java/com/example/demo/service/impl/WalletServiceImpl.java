@@ -307,4 +307,11 @@ public class WalletServiceImpl implements WalletService {
         }
         return dto;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WalletTransactionResponseDTO> getAllTransactions(Pageable pageable) {
+        Page<WalletTransaction> transactions = transactionRepository.findAllByOrderByCreatedAtDesc(pageable);
+        return transactions.map(this::convertToTransactionDTO);
+    }
 }
