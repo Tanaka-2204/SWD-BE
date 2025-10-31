@@ -33,4 +33,6 @@ public interface EventService {
     List<EventResponseDTO> getOngoingEvents();
 
     Page<EventResponseDTO> searchEventsByTitle(String keyword, Pageable pageable);
+
+    EventResponseDTO updateEventStatus(Long eventId, String status);
 }

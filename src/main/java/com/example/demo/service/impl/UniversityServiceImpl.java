@@ -1,5 +1,6 @@
 package com.example.demo.service.impl;
 
+import com.example.demo.dto.request.UniversityRequestDTO;
 import com.example.demo.dto.response.UniversityResponseDTO;
 import com.example.demo.entity.University;
 import com.example.demo.repository.UniversityRepository;
@@ -22,6 +23,17 @@ public class UniversityServiceImpl implements UniversityService {
         return universityRepository.findAll().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public UniversityResponseDTO createUniversity(UniversityRequestDTO requestDTO) {
+        University university = new University();
+        university.setName(requestDTO.getName());
+        university.setCode(requestDTO.getCode());
+        university.setDomain(requestDTO.getDomain());
+
+        University savedUniversity = universityRepository.save(university);
+        return convertToDTO(savedUniversity);
     }
 
     private UniversityResponseDTO convertToDTO(University university) {

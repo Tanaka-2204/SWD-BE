@@ -260,6 +260,22 @@ public class EventServiceImpl implements EventService {
         return eventRepository.findByTitleContainingIgnoreCase(keyword, pageable).map(this::convertToDTO);
     }
 
+    @Override
+    @Transactional
+    public EventResponseDTO updateEventStatus(Long eventId, String status) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
+
+        // Validate status - assuming valid statuses are APPROVED, REJECTED, etc.
+        if (!List.of("APPROVED", "REJECTED", "DRAFT", "PUBLISHED", "CANCELLED").contains(status)) {
+            throw new IllegalArgumentException("Invalid status: " + status);
+        }
+
+        event.setStatus(status);
+        Event savedEvent = eventRepository.save(event);
+        return convertToDTO(savedEvent);
+    }
+
     // --- HELPER METHOD ---
     // --- HELPER METHOD ---
     private EventResponseDTO convertToDTO(Event event) {

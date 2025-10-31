@@ -1,16 +1,24 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.request.BroadcastRequestDTO;
 import com.example.demo.dto.request.EventCategoryRequestDTO;
 import com.example.demo.dto.request.PartnerRequestDTO;
+import com.example.demo.dto.request.UniversityRequestDTO;
 import com.example.demo.dto.request.UserStatusUpdateDTO;
 import com.example.demo.dto.request.WalletTopupRequestDTO;
+import com.example.demo.dto.response.EventBroadcastResponseDTO;
+import com.example.demo.dto.response.EventResponseDTO;
 import com.example.demo.dto.response.StudentResponseDTO;
 import com.example.demo.service.StudentService;
 import com.example.demo.dto.response.EventCategoryResponseDTO;
 import com.example.demo.dto.response.PartnerResponseDTO;
+import com.example.demo.dto.response.UniversityResponseDTO;
 import com.example.demo.dto.response.WalletTransactionResponseDTO;
+import com.example.demo.service.BroadcastService;
 import com.example.demo.service.EventCategoryService;
+import com.example.demo.service.EventService;
 import com.example.demo.service.PartnerService;
+import com.example.demo.service.UniversityService;
 import com.example.demo.service.WalletService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,15 +47,24 @@ public class AdminController {
     private final WalletService walletService;
     private final EventCategoryService eventCategoryService;
     private final StudentService studentService;
+    private final UniversityService universityService;
+    private final EventService eventService;
+    private final BroadcastService broadcastService;
 
     public AdminController(PartnerService partnerService,
-                           WalletService walletService,
-                           EventCategoryService eventCategoryService,
-                           StudentService studentService) {
+                            WalletService walletService,
+                            EventCategoryService eventCategoryService,
+                            StudentService studentService,
+                            UniversityService universityService,
+                            EventService eventService,
+                            BroadcastService broadcastService) {
         this.partnerService = partnerService;
         this.walletService = walletService;
         this.eventCategoryService = eventCategoryService;
         this.studentService = studentService;
+        this.universityService = universityService;
+        this.eventService = eventService;
+        this.broadcastService = broadcastService;
     }
 
     // ===================================
@@ -171,8 +188,70 @@ public class AdminController {
     public ResponseEntity<PartnerResponseDTO> updatePartnerStatus(
             @Parameter(description = "ID of the partner to update") @PathVariable Long id,
             @Valid @RequestBody UserStatusUpdateDTO statusDTO) {
-        
+
         PartnerResponseDTO updatedPartner = partnerService.updatePartnerStatus(id, statusDTO);
         return ResponseEntity.ok(updatedPartner);
+    }
+
+    // ===================================
+    // == University Management
+    // ===================================
+
+    @Operation(summary = "Admin creates a new university", description = "Adds a new university to the system.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "University created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input data"),
+        @ApiResponse(responseCode = "409", description = "University with the same name already exists")
+    })
+    @PostMapping("/universities")
+    public ResponseEntity<UniversityResponseDTO> createUniversity(@Valid @RequestBody UniversityRequestDTO requestDTO) {
+        UniversityResponseDTO newUniversity = universityService.createUniversity(requestDTO);
+        return new ResponseEntity<>(newUniversity, HttpStatus.CREATED);
+    }
+
+    // ===================================
+    // == Event Management
+    // ===================================
+
+    @Operation(summary = "Admin approves or rejects an event", description = "Updates the status of an event to APPROVED or REJECTED.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Event status updated successfully"),
+        @ApiResponse(responseCode = "404", description = "Event not found"),
+        @ApiResponse(responseCode = "400", description = "Invalid status value")
+    })
+    @PatchMapping("/events/{id}/status")
+    public ResponseEntity<EventResponseDTO> updateEventStatus(
+            @Parameter(description = "ID of the event to update") @PathVariable Long id,
+            @Valid @RequestBody UserStatusUpdateDTO statusDTO) {
+
+        EventResponseDTO updatedEvent = eventService.updateEventStatus(id, statusDTO.getStatus());
+        return ResponseEntity.ok(updatedEvent);
+    }
+
+    // ===================================
+    // == Transaction Monitoring
+    // ===================================
+
+    @Operation(summary = "Admin gets all transactions", description = "Retrieves a paginated list of all wallet transactions in the system for monitoring.")
+    @ApiResponse(responseCode = "200", description = "Successfully retrieved transaction list")
+    @GetMapping("/transactions")
+    public ResponseEntity<Page<WalletTransactionResponseDTO>> getAllTransactions(Pageable pageable) {
+        Page<WalletTransactionResponseDTO> transactions = walletService.getAllTransactions(pageable);
+        return ResponseEntity.ok(transactions);
+    }
+
+    // ===================================
+    // == Broadcast Management
+    // ===================================
+
+    @Operation(summary = "Admin sends system-wide broadcast", description = "Sends a broadcast message to all students in the system.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Broadcast sent successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid broadcast data")
+    })
+    @PostMapping("/broadcast")
+    public ResponseEntity<EventBroadcastResponseDTO> sendSystemBroadcast(@Valid @RequestBody BroadcastRequestDTO requestDTO) {
+        EventBroadcastResponseDTO broadcast = broadcastService.sendSystemBroadcast(requestDTO);
+        return ResponseEntity.ok(broadcast);
     }
 }
