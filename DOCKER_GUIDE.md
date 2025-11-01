@@ -217,7 +217,7 @@ docker exec -it loyalty-backend sh
 ls -la
 
 # Xem biến môi trường
-env | grep SPRING
+.env | grep SPRING
 
 # Thoát
 exit

@@ -399,6 +399,22 @@ public class EventServiceImpl implements EventService {
         return convertToDTO(savedEvent);
     }
 
+    @Override
+    @Transactional
+    public EventResponseDTO approveEvent(Long eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
+
+        if (!"PENDING".equals(event.getStatus())) {
+            throw new IllegalStateException("Event is not in PENDING status");
+        }
+
+        event.setStatus("APPROVED");
+        Event savedEvent = eventRepository.save(event);
+
+        return convertToDTO(savedEvent);
+    }
+
     // --- HELPER METHOD ---
     private EventResponseDTO convertToDTO(Event event) {
         EventResponseDTO dto = new EventResponseDTO();

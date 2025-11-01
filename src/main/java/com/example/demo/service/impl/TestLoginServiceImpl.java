@@ -19,7 +19,7 @@ public class TestLoginServiceImpl implements TestLoginService {
 
     private final AWSCognitoIdentityProvider cognitoClient;
 
-    @Value("${AWS_COGNITO_APPCLIENTID}")
+    @Value("${AWS_COGNITO_CLIENT_ID}")
     private String appClientId;
 
     public TestLoginServiceImpl(AWSCognitoIdentityProvider cognitoClient) {
