@@ -2,7 +2,7 @@ package com.example.demo.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-
+import com.example.demo.config.AuthPrincipal;
 import com.example.demo.dto.request.WalletRedeemRequestDTO;
 import com.example.demo.dto.request.WalletRollbackRequestDTO;
 import com.example.demo.dto.request.WalletTopupRequestDTO;
@@ -17,9 +17,11 @@ public interface WalletService {
     // --- READ OPERATIONS ---
     WalletResponseDTO getWalletById(Long walletId);
 
+    Page<WalletTransactionResponseDTO> getTransactionHistory(Long ownerId, String ownerType, Pageable pageable);
+
     WalletResponseDTO getWalletByOwner(String ownerType, Long ownerId);
 
-    Page<WalletTransactionResponseDTO> getWalletHistoryById(Long walletId, Pageable pageable);
+    Page<WalletTransactionResponseDTO> getTransactionHistoryForUser(AuthPrincipal principal, Pageable pageable);
 
     // --- WRITE OPERATIONS ---
     WalletTransactionResponseDTO adminTopupForPartner(WalletTopupRequestDTO topupRequest);

@@ -16,5 +16,6 @@ public interface CheckinRepository extends JpaRepository<Checkin, Long> {
     Optional<Checkin> findByEventIdAndStudentId(Long eventId, Long studentId);
     List<Checkin> findAllByEventId(Long eventId);
     Page<Checkin> findAllByEventId(Long eventId, Pageable pageable);
+    Page<Checkin> findByStudentId(Long studentId, Pageable pageable);
     Integer countByEventId(Long eventId);
 }

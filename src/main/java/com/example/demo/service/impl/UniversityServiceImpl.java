@@ -10,9 +10,8 @@ import com.example.demo.repository.UniversityRepository;
 import com.example.demo.service.UniversityService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional; // <<< THÊM
-
-import java.util.List;
-import java.util.stream.Collectors;
+import org.springframework.data.domain.Page; // <<< THÊM
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class UniversityServiceImpl implements UniversityService {
@@ -28,10 +27,10 @@ public class UniversityServiceImpl implements UniversityService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<UniversityResponseDTO> getAllUniversities() {
-        return universityRepository.findAll().stream()
-                .map(this::convertToDTO) // Dùng helper
-                .collect(Collectors.toList());
+    public Page<UniversityResponseDTO> getAllUniversities(Pageable pageable) {
+        // (Giả sử bạn có hàm 'toUniversityDTO')
+        return universityRepository.findAll(pageable)
+                                   .map(this::convertToDTO);
     }
 
     // <<< THÊM PHƯƠNG THỨC TẠO MỚI >>>

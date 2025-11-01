@@ -8,13 +8,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import com.example.demo.entity.Event;
-import org.springframework.security.oauth2.jwt.Jwt;
 import java.util.List;
 
 public interface EventService {
 
     // --- CRUD Methods ---
-    EventResponseDTO createEvent(Jwt jwt, EventCreateDTO requestDTO);
+    EventResponseDTO createEvent(AuthPrincipal principal, EventCreateDTO requestDTO);
 
     EventResponseDTO getEventById(Long eventId);
 
@@ -30,10 +29,10 @@ public interface EventService {
     List<EventResponseDTO> getEventsByCategory(Long categoryId);
 
     Page<EventResponseDTO> getUpcomingEvents(Pageable pageable);
-    
-    List<EventResponseDTO> getOngoingEvents();
 
     Page<EventResponseDTO> searchEventsByTitle(String keyword, Pageable pageable);
+
+    Page<EventResponseDTO> getEventHistoryByStudent(Long studentId, Pageable pageable);
 
     // ==============================================================
     // PHƯƠNG THỨC MỚI: Hoàn tất và thanh toán điểm cho người tham dự

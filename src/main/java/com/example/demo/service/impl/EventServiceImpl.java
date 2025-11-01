@@ -13,6 +13,7 @@ import com.example.demo.entity.Student;
 import com.example.demo.entity.Wallet;
 import com.example.demo.entity.WalletTransaction;
 import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.exception.BadRequestException;
 import com.example.demo.repository.EventCategoryRepository;
 import com.example.demo.repository.EventRepository;
 import com.example.demo.repository.PartnerRepository;
@@ -20,6 +21,8 @@ import com.example.demo.repository.WalletTransactionRepository;
 import com.example.demo.repository.WalletRepository;
 import com.example.demo.repository.CheckinRepository;
 import com.example.demo.service.EventService;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -50,7 +53,8 @@ public class EventServiceImpl implements EventService {
     private final JwtAuthenticationConverter jwtAuthenticationConverter;
     private static final Logger logger = LoggerFactory.getLogger(EventServiceImpl.class);
     private final WalletTransactionRepository transactionRepository;
-    private final CheckinRepository checkinRepository;
+    @Autowired
+    private CheckinRepository checkinRepository;
     private final WalletRepository walletRepository;
 
     public EventServiceImpl(EventRepository eventRepository,
@@ -66,112 +70,113 @@ public class EventServiceImpl implements EventService {
         this.checkinRepository = checkinRepository;
         this.walletRepository = walletRepository;
     }
-
+    
     @Override
     @Transactional
-    public EventResponseDTO createEvent(Jwt jwt, EventCreateDTO requestDTO) {
+    public EventResponseDTO createEvent(AuthPrincipal principal, EventCreateDTO requestDTO) {
         
-        // 1. Kiểm tra quyền và tìm Partner (Helper đã bao gồm logic xác thực)
-        Partner partnerToAssign = findPartnerFromJwt(jwt, requestDTO.getPartnerId());
+        // 1. Xác định Partner (Giống logic StudentServiceImpl)
+        Long partnerId = getPartnerIdFromPrincipal(principal, requestDTO);
+
+        Partner partner = partnerRepository.findById(partnerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Partner not found with id: " + partnerId));
         
-        Wallet partnerWallet = partnerToAssign.getWallet();
+        EventCategory category = categoryRepository.findById(requestDTO.getCategoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + requestDTO.getCategoryId()));
+
+        BigDecimal totalBudgetCoin = requestDTO.getTotalBudgetCoin();
+
+        // 2. Kiểm tra ngân sách (Balance Check)
+        Wallet partnerWallet = partner.getWallet();
         if (partnerWallet == null) {
-            throw new ResourceNotFoundException("Wallet not found for partner: " + partnerToAssign.getId());
+            throw new BadRequestException("Partner wallet not found.");
+        }
+        if (partnerWallet.getBalance().compareTo(totalBudgetCoin) < 0) {
+            throw new BadRequestException("Insufficient funds. Partner balance is " + partnerWallet.getBalance());
         }
 
-        BigDecimal fundingAmount = requestDTO.getTotalBudgetCoin();
-        if (fundingAmount == null || fundingAmount.compareTo(BigDecimal.ZERO) < 0) {
-            throw new DataIntegrityViolationException("Initial budget (totalBudgetCoin) must be zero or positive.");
-        }
-
-        if (fundingAmount.compareTo(BigDecimal.ZERO) > 0) {
-            if (partnerWallet.getBalance().compareTo(fundingAmount) < 0) {
-                throw new DataIntegrityViolationException(
-                        "Insufficient funds. Partner balance is: " + partnerWallet.getBalance());
-            }
-        }
-
-        // 2. Tìm danh mục
-        EventCategory category = null;
-        if (requestDTO.getCategoryId() != null) {
-            category = categoryRepository.findById(requestDTO.getCategoryId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "EventCategory not found with id: " + requestDTO.getCategoryId()));
-        }
-
-        // 3. Tạo đối tượng Event
+        // 3. TẠO VÍ SỰ KIỆN (TRONG BỘ NHỚ)
+        // Ví này sẽ được tự động lưu khi lưu Event (nhờ CascadeType.ALL)
+        Wallet eventWallet = new Wallet();
+        eventWallet.setBalance(totalBudgetCoin); // <<< NẠP SẴN TIỀN
+        eventWallet.setCurrency("VND");
+        eventWallet.setOwnerType("EVENT");
+        // (OwnerId sẽ được cập nhật sau khi Event có ID)
+        
+        // 4. TẠO SỰ KIỆN (TRONG BỘ NHỚ)
         Event event = new Event();
-        event.setPartner(partnerToAssign);
+        event.setPartner(partner);
         event.setCategory(category);
         event.setTitle(requestDTO.getTitle());
         event.setDescription(requestDTO.getDescription());
-        
-        if (requestDTO.getStartTime() == null || requestDTO.getEndTime() == null) {
-            throw new IllegalArgumentException("Start time and end time are required.");
-        }
+        event.setLocation(requestDTO.getLocation());
         event.setStartTime(requestDTO.getStartTime());
         event.setEndTime(requestDTO.getEndTime());
-        event.setLocation(requestDTO.getLocation());
+        event.setStatus("DRAFT");
+        
         event.setPointCostToRegister(requestDTO.getPointCostToRegister());
         event.setTotalRewardPoints(requestDTO.getTotalRewardPoints());
+        event.setTotalBudgetCoin(totalBudgetCoin);
+        event.setWallet(eventWallet); // <<< Liên kết Ví vào Sự kiện
         
-        event.setTotalBudgetCoin(fundingAmount); 
-        event.setStatus("DRAFT"); 
-
-        // 3.1. Tạo Ví Event
-        Wallet eventWallet = new Wallet();
-        eventWallet.setBalance(fundingAmount); 
-        eventWallet.setOwnerType("EVENT"); 
-        event.setWallet(eventWallet); 
-        
-        // 3.2. Tính Max Attendees
-        Integer totalRewardPoints = event.getTotalRewardPoints(); 
-        BigDecimal rewardPerAttendee = totalRewardPoints != null ? new BigDecimal(totalRewardPoints) : BigDecimal.ZERO;
-
-        if (rewardPerAttendee.compareTo(BigDecimal.ZERO) > 0 && fundingAmount.compareTo(BigDecimal.ZERO) > 0) {
-            Integer maxSlots = fundingAmount.divide(rewardPerAttendee, 0, RoundingMode.FLOOR).intValue();
-            event.setMaxAttendees(maxSlots);
-        } else {
-            event.setMaxAttendees(0); 
+        // Tính toán MaxAttendees
+        int maxAttendees = 0;
+        if (event.getTotalRewardPoints() != null && event.getTotalRewardPoints() > 0) {
+            maxAttendees = totalBudgetCoin
+                    .divide(new BigDecimal(event.getTotalRewardPoints()), 0, RoundingMode.FLOOR)
+                    .intValue();
         }
+        event.setMaxAttendees(maxAttendees);
 
-        // 4. Thực hiện chuyển tiền (Nếu nạp > 0)
-        if (fundingAmount.compareTo(BigDecimal.ZERO) > 0) {
-            partnerWallet.setBalance(partnerWallet.getBalance().subtract(fundingAmount));
-            walletRepository.save(partnerWallet);
-        }
-        
-        // 5. Lưu sự kiện
+        // 5. THỰC HIỆN CHUYỂN TIỀN (KÝ QUỸ)
+        // 5.1. Trừ tiền Partner
+        partnerWallet.setBalance(partnerWallet.getBalance().subtract(totalBudgetCoin));
+        walletRepository.save(partnerWallet);
+
+        // 5.2. Lưu Event (sẽ tự động lưu luôn Event Wallet)
         Event savedEvent = eventRepository.save(event);
+
+        // 5.3. Cập nhật OwnerId cho Event Wallet
+        Wallet savedEventWallet = savedEvent.getWallet();
+        savedEventWallet.setOwnerId(savedEvent.getId());
+        walletRepository.save(savedEventWallet);
+
+        // 6. GHI LẠI 2 GIAO DỊCH (LOGGING)
+        // 6.1. Giao dịch TRỪ (Debit) từ Partner
+        WalletTransaction debitTx = new WalletTransaction();
+        debitTx.setWallet(partnerWallet);
+        debitTx.setAmount(totalBudgetCoin.negate()); // Số tiền âm
+        debitTx.setTxnType("EVENT_FUNDING");
+        debitTx.setReferenceType("EVENT");
+        debitTx.setReferenceId(savedEvent.getId());
+
+        // 6.2. Giao dịch CỘNG (Credit) vào Ví Event
+        WalletTransaction creditTx = new WalletTransaction();
+        creditTx.setWallet(savedEventWallet);
+        creditTx.setAmount(totalBudgetCoin); // Số tiền dương
+        creditTx.setTxnType("EVENT_FUNDING");
+        creditTx.setReferenceType("PARTNER");
+        creditTx.setReferenceId(partner.getId());
         
-        eventWallet.setOwnerId(savedEvent.getId());
-        walletRepository.save(eventWallet); 
+        transactionRepository.saveAll(List.of(debitTx, creditTx));
+        // ==========================================================
+        
+        logger.info("Event {} created (DRAFT). {} coins transferred from Partner {}.",
+                savedEvent.getId(), totalBudgetCoin, partner.getId());
 
-        // 6. Ghi giao dịch (Nếu nạp > 0)
-        if (fundingAmount.compareTo(BigDecimal.ZERO) > 0) {
-            WalletTransaction partnerTx = new WalletTransaction();
-            partnerTx.setWallet(partnerWallet);
-            partnerTx.setCounterparty(eventWallet); 
-            partnerTx.setTxnType("FUND_EVENT"); 
-            partnerTx.setAmount(fundingAmount.negate()); 
-            partnerTx.setReferenceType("EVENT_CREATION");
-            partnerTx.setReferenceId(savedEvent.getId());
-            transactionRepository.save(partnerTx);
-            
-            WalletTransaction eventTx = new WalletTransaction();
-            eventTx.setWallet(eventWallet);
-            eventTx.setCounterparty(partnerWallet); 
-            eventTx.setTxnType("RECEIVE_FUNDING"); 
-            eventTx.setAmount(fundingAmount); 
-            eventTx.setReferenceType("EVENT_CREATION");
-            eventTx.setReferenceId(savedEvent.getId());
-            transactionRepository.save(eventTx);
-        }
-
-        logger.info("Successfully created event '{}' (ID: {}) and its wallet (ID: {}) with initial budget {}", 
-                savedEvent.getTitle(), savedEvent.getId(), eventWallet.getId(), fundingAmount);
-
+        // 7. Trả về DTO
         return convertToDTO(savedEvent);
+    }
+
+    @Override
+    public Page<EventResponseDTO> getEventHistoryByStudent(Long studentId, Pageable pageable) {
+        // Tìm các bản ghi checkin của student (đã đăng ký)
+        Page<Checkin> checkins = checkinRepository.findByStudentId(studentId, pageable);
+        
+        // Chuyển đổi Page<Checkin> sang Page<Event> rồi sang Page<EventResponseDTO>
+        // (Giả sử bạn có hàm 'convertToDTO')
+        return checkins.map(Checkin::getEvent)
+                       .map(this::convertToDTO);
     }
 
     // --- READ ---
@@ -297,13 +302,6 @@ public class EventServiceImpl implements EventService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<EventResponseDTO> getOngoingEvents() {
-        return eventRepository.findOngoingEvents(OffsetDateTime.now()).stream()
-                .map(this::convertToDTO).collect(Collectors.toList());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public Page<EventResponseDTO> searchEventsByTitle(String keyword, Pageable pageable) {
         return eventRepository.findByTitleContainingIgnoreCase(keyword, pageable).map(this::convertToDTO);
     }
@@ -425,7 +423,7 @@ public class EventServiceImpl implements EventService {
         }
 
         // 2. Nếu là Partner, kiểm tra ID
-        if (principal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PARTNER"))) {
+        if (principal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PARTNERS"))) {
             Long partnerIdFromToken = principal.getPartnerId();
             if (partnerIdFromToken == null) {
                 throw new ForbiddenException("Partner ID not found in token.");
@@ -439,33 +437,24 @@ public class EventServiceImpl implements EventService {
         throw new ForbiddenException("You do not have permission to perform this action on this event.");
     }
 
-    /**
-     * Helper (Dùng trong createEvent): Tìm Partner từ Jwt và kiểm tra quyền
-     */
-    private Partner findPartnerFromJwt(Jwt jwt, Long requestedPartnerId) {
-        String cognitoSub = jwt.getSubject();
-        Collection<? extends GrantedAuthority> authorities = jwtAuthenticationConverter.convert(jwt).getAuthorities();
-        boolean isAdmin = authorities.stream()
-                .anyMatch(ga -> ga.getAuthority().equals("ROLE_ADMIN"));
-        boolean isPartner = authorities.stream()
-                .anyMatch(ga -> ga.getAuthority().equals("ROLE_PARTNERS"));
+    // (Hàm helper để lấy PartnerId từ Principal)
+    private Long getPartnerIdFromPrincipal(AuthPrincipal principal, EventCreateDTO requestDTO) {
+        Long partnerId = principal.getPartnerId();
         
-        if (isAdmin) {
-            return partnerRepository.findById(requestedPartnerId)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Partner specified in request (ID: " + requestedPartnerId + ") not found."));
-        } else if (isPartner) {
-            Partner loggedInPartner = partnerRepository.findByCognitoSub(cognitoSub)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Partner profile not found for authenticated user."));
-            if (!loggedInPartner.getId().equals(requestedPartnerId)) {
-                throw new ForbiddenException("Partners can only create events for themselves. Mismatched partnerId.");
+        if (principal.isAdmin()) {
+            // Nếu là Admin, cho phép tạo hộ
+            if (requestDTO.getPartnerId() == null) {
+                throw new BadRequestException("Admin must specify a partnerId when creating an event.");
             }
-            return loggedInPartner;
-        } else {
-            throw new ForbiddenException(
-                    "User does not have permission (Admin or Partner role required) to create events.");
+            return requestDTO.getPartnerId();
         }
+        
+        if (partnerId == null) {
+            // Nếu là Partner (hoặc vai trò khác) nhưng không có partnerId (chưa hoàn tất hồ sơ)
+            throw new ForbiddenException("User does not have a Partner ID. Please complete Partner profile.");
+        }
+        
+        return partnerId;
     }
 
     /**

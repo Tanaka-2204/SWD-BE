@@ -10,13 +10,16 @@ import com.example.demo.dto.response.UniversityResponseDTO;
 import com.example.demo.service.StudentService;
 import com.example.demo.service.UniversityService;
 import com.example.demo.dto.response.EventCategoryResponseDTO;
+import com.example.demo.dto.response.PageResponseDTO;
 import com.example.demo.dto.response.PartnerResponseDTO;
 import com.example.demo.dto.response.WalletTransactionResponseDTO;
 import com.example.demo.service.EventCategoryService;
 import com.example.demo.service.PartnerService;
 import com.example.demo.service.WalletService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -72,12 +75,23 @@ public class AdminController {
         return new ResponseEntity<>(newPartner, HttpStatus.CREATED);
     }
 
-    @Operation(summary = "Admin gets list of all partners", description = "Retrieves a complete list of all partners in the system.")
+    @Operation(summary = "Admin gets list of all partners", description = "Retrieves a paginated list of all partners.")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved partner list")
     @GetMapping("/partners")
-    public ResponseEntity<List<PartnerResponseDTO>> getAllPartners() {
-        List<PartnerResponseDTO> partners = partnerService.getAllPartners();
-        return ResponseEntity.ok(partners);
+    public ResponseEntity<PageResponseDTO<PartnerResponseDTO>> getAllPartners(
+            // FE chỉ cần gửi 3 tham số đơn giản này
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id,asc") String sort) {
+        
+        // Backend tự xử lý logic Pageable phức tạp
+        Pageable pageable = createPageable(page, size, sort);
+        
+        // Gọi service (Lưu ý: Service phải được cập nhật ở Bước 3)
+        Page<PartnerResponseDTO> partnersPage = partnerService.getAllPartners(pageable);
+        
+        // Trả về DTO đã được tối giản
+        return ResponseEntity.ok(new PageResponseDTO<>(partnersPage));
     }
     
     // (Bạn cũng có thể di chuyển API PUT/DELETE Partner vào đây nếu chỉ Admin được làm)
@@ -146,9 +160,20 @@ public class AdminController {
     @Operation(summary = "Admin gets list of all students", description = "Retrieves a paginated list of all student users.")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved student list")
     @GetMapping("/students")
-    public ResponseEntity<Page<StudentResponseDTO>> getAllStudents(Pageable pageable) {
+    public ResponseEntity<PageResponseDTO<StudentResponseDTO>> getAllStudents(
+            // FE chỉ cần gửi 3 tham số đơn giản này
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id,asc") String sort) {
+
+        // Backend tự xử lý logic Pageable phức tạp
+        Pageable pageable = createPageable(page, size, sort);
+        
+        // Gọi service
         Page<StudentResponseDTO> students = studentService.getAllStudents(pageable);
-        return ResponseEntity.ok(students);
+        
+        // Trả về DTO đã được tối giản
+        return ResponseEntity.ok(new PageResponseDTO<>(students));
     }
 
     @Operation(summary = "Admin updates a student's status", description = "Updates the status of a specific student (e.g., to 'ACTIVE' or 'SUSPENDED').")
@@ -206,5 +231,22 @@ public class AdminController {
     public ResponseEntity<Void> deleteUniversity(@PathVariable Long id) {
         universityService.deleteUniversity(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private Pageable createPageable(int page, int size, String sort) {
+        int pageIndex = page > 0 ? page - 1 : 0; // Chuyển 1-based (FE) về 0-based (Spring)
+
+        try {
+            String[] sortParams = sort.split(",");
+            String sortField = sortParams[0];
+            Sort.Direction direction = (sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")) 
+                                        ? Sort.Direction.DESC 
+                                        : Sort.Direction.ASC;
+            
+            return PageRequest.of(pageIndex, size, Sort.by(direction, sortField));
+        } catch (Exception e) {
+            // (Xử lý lỗi nếu chuỗi sort bị sai, ví dụ dùng 'id' làm mặc định)
+            return PageRequest.of(pageIndex, size, Sort.by(Sort.Direction.ASC, "id"));
+        }
     }
 }

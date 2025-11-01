@@ -10,7 +10,9 @@ import com.example.demo.entity.University;
 import com.example.demo.exception.DataIntegrityViolationException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.entity.Wallet; // <<< THÊM IMPORT
+import com.example.demo.entity.WalletTransaction;
 import com.example.demo.repository.WalletRepository; // <<< THÊM IMPORT
+import com.example.demo.repository.WalletTransactionRepository; // <<< THÊM IMPORT
 import java.math.BigDecimal;
 import com.example.demo.repository.StudentRepository;
 import com.example.demo.repository.UniversityRepository;
@@ -20,13 +22,14 @@ import com.example.demo.service.StudentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
-import com.amazonaws.services.cognitoidp.model.AdminGetUserRequest;
-import com.amazonaws.services.cognitoidp.model.AdminGetUserResult;
-import com.amazonaws.services.cognitoidp.model.AttributeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import java.util.Map;
 
 @Service
 public class StudentServiceImpl implements StudentService {
@@ -36,15 +39,25 @@ public class StudentServiceImpl implements StudentService {
     private final StudentRepository studentRepository;
     private final UniversityRepository universityRepository;
     private final WalletRepository walletRepository;
+    private final WalletTransactionRepository transactionRepository;
     private final AWSCognitoIdentityProvider cognitoClient;
-    private final String userPoolId = "ap-southeast-2_9RLjNQhOk";
+    private final WebClient webClient;
+    @Value("${AWS_COGNITO_USER_POOL_ID}")
+    private final String userPoolId;
+    @Value("${cognito.userinfo-url}") // <<< THÊM
+    private String userInfoUrl;
 
     public StudentServiceImpl(StudentRepository studentRepository, UniversityRepository universityRepository,
-            WalletRepository walletRepository, AWSCognitoIdentityProvider cognitoClient) {
+            WalletRepository walletRepository, WalletTransactionRepository transactionRepository,
+            AWSCognitoIdentityProvider cognitoClient,
+            WebClient.Builder webClientBuilder) {
         this.studentRepository = studentRepository;
         this.universityRepository = universityRepository;
         this.walletRepository = walletRepository;
+        this.transactionRepository = transactionRepository;
         this.cognitoClient = cognitoClient;
+        this.webClient = webClientBuilder.build();
+        this.userPoolId = System.getenv("AWS_COGNITO_USER_POOL_ID");
     }
 
     @Override
@@ -65,86 +78,90 @@ public class StudentServiceImpl implements StudentService {
 
     @Override
     @Transactional
-    public StudentResponseDTO completeProfile(AuthPrincipal principal, StudentProfileCompletionDTO dto) {
+    public StudentResponseDTO completeProfile(AuthPrincipal principal,
+            String rawAccessToken,
+            StudentProfileCompletionDTO completionDTO) {
 
+        // 1. Kiểm tra profile (Logic cũ)
         String cognitoSub = principal.getCognitoSub();
-        String cognitoUsername = principal.getUsername();
-        String userEmail = principal.getEmail();
-        studentRepository.findByCognitoSub(cognitoSub).ifPresent(s -> {
-            throw new DataIntegrityViolationException("Student profile already exists.");
-        });
+        if (studentRepository.findByCognitoSub(cognitoSub).isPresent()) {
+            throw new DataIntegrityViolationException("Student profile already completed.");
+        }
 
-        // 3. Lấy dữ liệu còn lại từ DTO (logic giữ nguyên)
-        String phoneNumber = dto.getPhoneNumber();
-        String avatarUrl = dto.getAvatarUrl();
-
-        // ==========================================================
-        // SỬA ĐỔI QUAN TRỌNG: TRUY VẤN COGNITO ĐỂ LẤY DỮ LIỆU MỚI NHẤT
-        // ==========================================================
-        String universityCodeOrName;
-        String fullName;
-
+        // 2. Gọi API /USERINFO (Logic cũ)
+        Map<String, Object> userInfo;
         try {
-            AdminGetUserRequest getUserRequest = new AdminGetUserRequest()
-                    .withUserPoolId(userPoolId)
-                    .withUsername(cognitoUsername); // Sử dụng cognitoSub
-
-            AdminGetUserResult userResult = cognitoClient.adminGetUser(getUserRequest);
-
-            // Trích xuất University Code và Full Name từ User Attributes
-            universityCodeOrName = userResult.getUserAttributes().stream()
-                    .filter(attr -> "custom:university".equals(attr.getName()))
-                    .findFirst().map(AttributeType::getValue)
-                    .orElse(null);
-
-            fullName = userResult.getUserAttributes().stream()
-                    .filter(attr -> "name".equals(attr.getName()))
-                    .findFirst().map(AttributeType::getValue)
-                    .orElse(null);
-
+            userInfo = webClient.get()
+                    .uri(userInfoUrl)
+                    .headers(headers -> headers.setBearerAuth(rawAccessToken))
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                    })
+                    .block();
         } catch (Exception e) {
-            logger.error("Error retrieving user attributes from Cognito for sub {}: {}", cognitoSub, e.getMessage());
-            throw new ResourceNotFoundException("Error accessing user data from Cognito.");
+            throw new ResourceNotFoundException("Could not fetch user info from Cognito: " + e.getMessage());
         }
 
-        // 4. Validate dữ liệu Cognito MỚI (chỉ còn lại trường hợp Lambda thất bại)
-        if (universityCodeOrName == null || universityCodeOrName.isBlank()) {
-            // Lỗi này xảy ra khi Lambda Post-Confirmation GHI DỮ LIỆU THẤT BẠI
-            throw new BadRequestException("University code is missing from Cognito attributes. Please contact admin.");
+        if (userInfo == null) {
+            throw new ResourceNotFoundException("No user info returned from Cognito.");
         }
-        if (fullName == null || fullName.isBlank()) {
-            throw new BadRequestException("Full name is missing from Cognito attributes.");
+
+        // 3. Lấy thông tin từ /userinfo (Logic cũ)
+        String fullName = (String) userInfo.get("name");
+        String email = (String) userInfo.get("email");
+        String universityName = (String) userInfo.get("custom:university");
+
+        if (universityName == null) {
+            // Lỗi này sẽ xuất hiện nếu claim thực sự không có trong token
+            throw new ResourceNotFoundException("University name ('custom:university') not found in token.");
         }
-        // (Bỏ qua việc kiểm tra DataIntegrity của Phone Number, logic giữ nguyên)
-        studentRepository.findByPhoneNumber(phoneNumber).ifPresent(s -> {
-            throw new DataIntegrityViolationException("Phone number " + phoneNumber + " already in use.");
-        });
+        // 4. Tìm trường (Logic cũ)
+        University university = universityRepository.findByName(universityName)
+                .orElseThrow(() -> new ResourceNotFoundException("University not found for name: " + universityName));
 
-        // 5. Tìm University (logic giữ nguyên)
-        University university = universityRepository.findByName(universityCodeOrName)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "University not found for name: " + universityCodeOrName +
-                                ". Please contact admin to add this university to the database."));
-
-        // 6. Tạo Student mới (logic giữ nguyên)
+        // 5. Trộn dữ liệu và tạo Student (Logic cũ)
         Student student = new Student();
         student.setCognitoSub(cognitoSub);
-        student.setEmail(userEmail);
-        student.setFullName(fullName); // <<< DÙNG FULLNAME MỚI TỪ COGNITO
+        student.setFullName(fullName);
+        student.setEmail(email);
         student.setUniversity(university);
-        student.setPhoneNumber(phoneNumber);
-        student.setAvatarUrl(avatarUrl);
-        student.setStatus(UserAccountStatus.ACTIVE);
+        student.setPhoneNumber(completionDTO.getPhoneNumber());
+        student.setAvatarUrl(completionDTO.getAvatarUrl());
 
-        // 7. Tạo Wallet, Save Student và trả về (logic giữ nguyên)
+        // ==========================================================
+        // <<< LOGIC TẶNG 100 COIN KHI ĐĂNG KÝ
+        // ==========================================================
+
+        // 6. Tạo ví
+        Wallet newWallet = new Wallet();
+
+        // 6.1. SỬA ĐỔI: Set số dư ban đầu là 100
+        BigDecimal bonusAmount = new BigDecimal(100);
+        newWallet.setBalance(bonusAmount);
+        newWallet.setOwnerType("STUDENT");
+        newWallet.setCurrency("COIN");
+        // 7. Gán Ví vào Student (Logic cũ)
+        student.setWallet(newWallet);
+
+        // 8. Lưu Student (CascadeType.ALL sẽ tự động lưu cả Wallet)
         Student savedStudent = studentRepository.save(student);
-        // ... (Wallet creation logic)
-        Wallet studentWallet = new Wallet();
-        studentWallet.setOwnerType("STUDENT");
-        studentWallet.setOwnerId(savedStudent.getId());
-        studentWallet.setBalance(BigDecimal.ZERO);
-        studentWallet.setCurrency("COIN");
-        walletRepository.save(studentWallet);
+
+        // 9. Cập nhật ownerId cho Wallet (Logic cũ)
+        newWallet.setOwnerId(savedStudent.getId());
+        walletRepository.save(newWallet); // (Lưu lại Wallet để có ID)
+
+        // 10. THÊM MỚI: Ghi lại giao dịch tặng thưởng
+        WalletTransaction bonusTx = new WalletTransaction();
+        bonusTx.setWallet(newWallet);
+        bonusTx.setAmount(bonusAmount); // Số tiền dương (cộng vào)
+        bonusTx.setTxnType("SIGNUP_BONUS"); // Loại giao dịch: Thưởng đăng ký
+        bonusTx.setReferenceType("SYSTEM"); // Tham chiếu: Hệ thống
+        bonusTx.setReferenceId(savedStudent.getId()); // Ghi ID sinh viên cho dễ truy vết
+
+        transactionRepository.save(bonusTx);
+
+        logger.info("Student {} created and received {} signup bonus.", savedStudent.getId(), bonusAmount);
+        // ==========================================================
 
         return toResponseDTO(savedStudent);
     }
@@ -207,7 +224,8 @@ public class StudentServiceImpl implements StudentService {
     }
 
     // Helper method to convert Student Entity to StudentResponseDTO
-    StudentResponseDTO toResponseDTO(Student student) {
+    @Override
+    public StudentResponseDTO toResponseDTO(Student student) {
         StudentResponseDTO dto = new StudentResponseDTO();
         dto.setId(student.getId());
         dto.setFullName(student.getFullName());
@@ -221,6 +239,14 @@ public class StudentServiceImpl implements StudentService {
         if (university != null) {
             dto.setUniversityId(university.getId());
             dto.setUniversityName(university.getName());
+        }
+
+        // (Thêm logic ví đã làm trước đó)
+        Wallet wallet = student.getWallet();
+        if (wallet != null) {
+            dto.setWalletId(wallet.getId());
+            dto.setBalance(wallet.getBalance());
+            dto.setCurrency(wallet.getCurrency());
         }
 
         return dto;

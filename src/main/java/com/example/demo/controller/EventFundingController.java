@@ -44,7 +44,7 @@ public class EventFundingController {
             @ApiResponse(responseCode = "409", description = "Ví Partner không đủ số dư") // (Hoặc 400 tùy logic)
     })
     @PostMapping("/partners/{partnerId}/funding")
-    @PreAuthorize("hasRole('PARTNER')") // Chỉ Partner mới được gọi
+    @PreAuthorize("hasRole('PARTNERS')") // Chỉ Partner mới được gọi
     public ResponseEntity<EventFundingResponseDTO> fundEvent(
             @Parameter(description = "ID của Partner thực hiện nạp tiền") 
             @PathVariable Long partnerId,

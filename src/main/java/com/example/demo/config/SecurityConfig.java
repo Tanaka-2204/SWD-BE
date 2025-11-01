@@ -50,14 +50,14 @@ public class SecurityConfig {
                     "/swagger-ui/**",
                     "/v3/api-docs/**",
                     "/api/v1/test/login",
-                    
-                    // <<< SỬA LẠI CÁC DÒNG NÀY >>>
                     "/api/v1/event-categories",
                     "/api/v1/event-categories/*",
                     "/api/v1/products", 
                     "/api/v1/products/*"
                 ).permitAll() 
                 .requestMatchers(HttpMethod.GET, "/api/v1/universities").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/events").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/events/{id}").permitAll()
                 .anyRequest().authenticated() // Bắt buộc xác thực cho TẤT CẢ các request còn lại
             )
             // === CẬP NHẬT Ở ĐÂY ===
@@ -111,13 +111,19 @@ public class SecurityConfig {
 
         @Override
         public Collection<GrantedAuthority> convert(Jwt jwt) {
+            // 1. Lấy các quyền mặc định (ví dụ: SCOPE_openid)
             Collection<GrantedAuthority> defaultAuthorities = defaultConverter.convert(jwt);
+            
+            // 2. Lấy danh sách Group từ Cognito
             List<String> groups = jwt.getClaimAsStringList(COGNITO_GROUPS_CLAIM);
 
+            // 3. SỬA LỖI LOGIC:
+            // Nếu không có group (là Student) -> Trả về danh sách rỗng (hoặc chỉ default)
             if (groups == null || groups.isEmpty()) {
                 return defaultAuthorities != null ? defaultAuthorities : Collections.emptyList();
             }
 
+            // 4. Nếu có group (là Admin/Partner) -> Thêm vai trò theo group
             List<GrantedAuthority> groupAuthorities = groups.stream()
                     .map(groupName -> new SimpleGrantedAuthority(ROLE_PREFIX + groupName.toUpperCase()))
                     .collect(Collectors.toList());
@@ -130,5 +136,4 @@ public class SecurityConfig {
             }
         }
     }
-    // =======================================================
 }

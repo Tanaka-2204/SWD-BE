@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.response.EventCategoryResponseDTO;
+import com.example.demo.dto.response.PageResponseDTO;
 import com.example.demo.service.EventCategoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -9,6 +10,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import java.util.List;
 
 @RestController
@@ -22,11 +27,20 @@ public class EventCategoryController {
         this.eventCategoryService = eventCategoryService;
     }
 
-    @Operation(summary = "Get all event categories", description = "Returns a list of all available event categories.") 
+    @Operation(summary = "Get all event categories", description = "Returns a paginated list of all event categories.") 
     @ApiResponse(responseCode = "200", description = "Successfully retrieved list of categories")
     @GetMapping
-    public ResponseEntity<List<EventCategoryResponseDTO>> getAllCategories() {
-        return ResponseEntity.ok(eventCategoryService.getAllCategories());
+    public ResponseEntity<PageResponseDTO<EventCategoryResponseDTO>> getAllCategories(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "name,asc") String sort) {
+        
+        Pageable pageable = createPageable(page, size, sort);
+        
+        // LƯU Ý: Bạn phải cập nhật service để nhận Pageable
+        Page<EventCategoryResponseDTO> categoryPage = eventCategoryService.getAllCategories(pageable);
+        
+        return ResponseEntity.ok(new PageResponseDTO<>(categoryPage));
     }
 
     @Operation(summary = "Get a category by ID", description = "Retrieves the details of a specific event category.")
@@ -38,5 +52,19 @@ public class EventCategoryController {
     public ResponseEntity<EventCategoryResponseDTO> getCategoryById(
             @Parameter(description = "ID of the category to retrieve") @PathVariable Long id) {
         return ResponseEntity.ok(eventCategoryService.getCategoryById(id));
+    }
+
+    private Pageable createPageable(int page, int size, String sort) {
+        int pageIndex = page > 0 ? page - 1 : 0; // Chuyển 1-based (FE) về 0-based (Spring)
+        try {
+            String[] sortParams = sort.split(",");
+            String sortField = sortParams[0];
+            Sort.Direction direction = (sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")) 
+                                        ? Sort.Direction.DESC 
+                                        : Sort.Direction.ASC;
+            return PageRequest.of(pageIndex, size, Sort.by(direction, sortField));
+        } catch (Exception e) {
+            return PageRequest.of(pageIndex, size, Sort.by(Sort.Direction.ASC, "id"));
+        }
     }
 }

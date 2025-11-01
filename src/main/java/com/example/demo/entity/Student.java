@@ -8,8 +8,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-import jakarta.persistence.EnumType; 
-import jakarta.persistence.Enumerated;
+
 import java.time.OffsetDateTime;
 
 @Getter
@@ -58,5 +57,18 @@ public class Student {
     @ColumnDefault("now()")
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
+
+    @OneToOne(
+        cascade = CascadeType.ALL,  // Tự động tạo/xóa Wallet khi Student được tạo/xóa
+        fetch = FetchType.LAZY,     // Chỉ tải Wallet khi được gọi
+        optional = false            // Bắt buộc Student phải có Wallet
+    )
+    @JoinColumn(
+        name = "wallet_id",               // Tên cột khóa ngoại trong bảng "student"
+        referencedColumnName = "wallet_id", // Tên cột khóa chính trong bảng "wallet"
+        nullable = false,                 // Bắt buộc phải có
+        unique = true                     // Đảm bảo 1 Student chỉ có 1 Wallet
+    )
+    private Wallet wallet;
 
 }

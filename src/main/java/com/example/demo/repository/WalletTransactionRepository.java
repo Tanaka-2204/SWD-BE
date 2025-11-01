@@ -10,7 +10,7 @@ import java.util.Optional;
 @Repository
 public interface WalletTransactionRepository extends JpaRepository<WalletTransaction, Long> {
 
-    Page<WalletTransaction> findByWalletIdOrderByCreatedAtDesc(Long walletId, Pageable pageable);
+    Page<WalletTransaction> findByWalletId(Long walletId, Pageable pageable);
 
     /**
      * Finds a transaction by its idempotency key to prevent duplicate operations.

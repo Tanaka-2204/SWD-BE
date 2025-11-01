@@ -30,10 +30,11 @@ import com.amazonaws.services.cognitoidp.model.InvalidParameterException;
 import org.slf4j.Logger; 
 import org.slf4j.LoggerFactory; 
 import org.springframework.beans.factory.annotation.Value; 
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class PartnerServiceImpl implements PartnerService {
@@ -187,10 +188,9 @@ public class PartnerServiceImpl implements PartnerService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<PartnerResponseDTO> getAllPartners() {
-        return partnerRepository.findAll().stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+    public Page<PartnerResponseDTO> getAllPartners(Pageable pageable) {
+        return partnerRepository.findAll(pageable)
+                                .map(this::convertToDTO);
     }
 
     @Override

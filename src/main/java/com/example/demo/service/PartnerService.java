@@ -4,7 +4,8 @@ import com.example.demo.dto.request.PartnerRequestDTO;
 import com.example.demo.dto.request.UserStatusUpdateDTO;
 import com.example.demo.dto.response.PartnerResponseDTO;
 import com.example.demo.exception.BadRequestException;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface PartnerService {
 
@@ -14,7 +15,7 @@ public interface PartnerService {
 
     PartnerResponseDTO getPartnerByCognitoSub(String cognitoSub);
 
-    List<PartnerResponseDTO> getAllPartners();
+    Page<PartnerResponseDTO> getAllPartners(Pageable pageable);
 
     PartnerResponseDTO updatePartner(Long partnerId, PartnerRequestDTO requestDTO);
 

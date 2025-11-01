@@ -187,7 +187,7 @@ public class CheckinServiceImpl implements CheckinService {
         if (principal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
             return;
         }
-        if (principal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PARTNER"))) {
+        if (principal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PARTNERS"))) {
             Long partnerIdFromToken = principal.getPartnerId();
             
             if (partnerIdFromToken == null) { 
