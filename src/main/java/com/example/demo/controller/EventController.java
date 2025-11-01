@@ -154,7 +154,7 @@ public class EventController {
             @RequestParam(defaultValue = "fullName,asc") String sort) {
 
         // --- BACKEND TỰ XỬ LÝ LOGIC PHỨC TẠP ---
-        Pageable pageable = createPageable(page, size, sort, "fullName");
+        Pageable pageable = createPageable(page, size, sort, "student.fullName");
         
         Page<StudentResponseDTO> attendees = checkinService.getAttendeesByEvent(eventId, pageable);
         
