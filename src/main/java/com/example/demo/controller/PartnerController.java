@@ -5,15 +5,19 @@ import com.example.demo.dto.response.EventResponseDTO;
 import com.example.demo.service.EventService;
 import com.example.demo.dto.response.WalletResponseDTO;
 import com.example.demo.dto.response.WalletTransactionResponseDTO;
+import com.example.demo.dto.response.PageResponseDTO;
 import com.example.demo.service.WalletService;
 import com.example.demo.dto.request.EventFundingRequestDTO;
 import com.example.demo.dto.response.EventFundingResponseDTO;
 import com.example.demo.service.EventFundingService;
+import com.example.demo.config.AuthPrincipal;
 import com.example.demo.dto.request.BroadcastRequestDTO; // Thêm
 import com.example.demo.dto.response.EventBroadcastResponseDTO; // Thêm
 import com.example.demo.service.BroadcastService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import com.example.demo.service.PartnerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -25,6 +29,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @RestController
 @RequestMapping("/api/v1/partners")
@@ -66,11 +71,15 @@ public class PartnerController {
     })
     @GetMapping("/{partnerId}/events")
     @PreAuthorize("hasRole('PARTNERS')")
-    public ResponseEntity<Page<EventResponseDTO>> getPartnerEvents(
-            @Parameter(description = "ID of the partner") @PathVariable Long partnerId,
-            Pageable pageable) {
-        Page<EventResponseDTO> events = eventService.getEventsByPartner(partnerId, pageable);
-        return ResponseEntity.ok(events);
+    public ResponseEntity<PageResponseDTO<EventResponseDTO>> getEventsForPartner(
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+
+        Pageable pageable = createPageable(page, size, sort);
+        Page<EventResponseDTO> events = eventService.getEventsByPartner(principal.getPartnerId(), pageable);
+        return ResponseEntity.ok(new PageResponseDTO<>(events));
     }
 
     @Operation(summary = "Get partner's wallet details", description = "Retrieves the wallet information for a specific partner.")
@@ -94,13 +103,15 @@ public class PartnerController {
     })
     @GetMapping("/{partnerId}/wallet/history")
     @PreAuthorize("hasRole('PARTNERS')")
-    public ResponseEntity<Page<WalletTransactionResponseDTO>> getPartnerWalletHistory(
-            @Parameter(description = "ID of the partner") @PathVariable Long partnerId, Pageable pageable) {
-        // 1. Lấy ví của partner
-        WalletResponseDTO wallet = walletService.getWalletByOwner("PARTNER", partnerId);
-        // 2. Lấy lịch sử từ walletId
-        Page<WalletTransactionResponseDTO> history = walletService.getWalletHistoryById(wallet.getId(), pageable);
-        return ResponseEntity.ok(history);
+    public ResponseEntity<PageResponseDTO<WalletTransactionResponseDTO>> getTransactionHistory(
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "transactionTime,desc") String sort) {
+
+        Pageable pageable = createPageable(page, size, sort);
+        Page<WalletTransactionResponseDTO> history = walletService.getTransactionHistory(principal.getPartnerId(), "PARTNER", pageable);
+        return ResponseEntity.ok(new PageResponseDTO<>(history));
     }
 
     @Operation(summary = "Partner funds an event", description = "Transfers coins from a partner's wallet to an event's budget.")
@@ -133,5 +144,19 @@ public class PartnerController {
 
         EventBroadcastResponseDTO broadcastResponse = broadcastService.sendBroadcast(partnerId, requestDTO);
         return ResponseEntity.ok(broadcastResponse);
+    }
+
+    private Pageable createPageable(int page, int size, String sort) {
+        int pageIndex = page > 0 ? page - 1 : 0;
+        try {
+            String[] sortParams = sort.split(",");
+            String sortField = sortParams[0];
+            Sort.Direction direction = (sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")) 
+                                        ? Sort.Direction.DESC 
+                                        : Sort.Direction.ASC;
+            return PageRequest.of(pageIndex, size, Sort.by(direction, sortField));
+        } catch (Exception e) {
+            return PageRequest.of(pageIndex, size, Sort.by(Sort.Direction.DESC, "createdAt")); // Mặc định
+        }
     }
 }

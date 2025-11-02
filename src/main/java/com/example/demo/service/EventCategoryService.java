@@ -2,7 +2,8 @@ package com.example.demo.service;
 
 import com.example.demo.dto.request.EventCategoryRequestDTO;
 import com.example.demo.dto.response.EventCategoryResponseDTO;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface EventCategoryService {
 
@@ -10,7 +11,7 @@ public interface EventCategoryService {
 
     EventCategoryResponseDTO getCategoryById(Long categoryId);
 
-    List<EventCategoryResponseDTO> getAllCategories();
+    Page<EventCategoryResponseDTO> getAllCategories(Pageable pageable);
 
     EventCategoryResponseDTO updateCategory(Long categoryId, EventCategoryRequestDTO requestDTO);
 

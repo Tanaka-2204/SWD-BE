@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.config.AuthPrincipal;
 import com.example.demo.dto.request.*;
 import com.example.demo.dto.response.*;
 import com.example.demo.service.WalletService;
@@ -12,6 +13,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -34,25 +38,32 @@ public class WalletController {
         @ApiResponse(responseCode = "404", description = "Wallet not found")
     })
     @GetMapping("/{id}")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<WalletResponseDTO> getWalletById(
             @Parameter(description = "ID of the wallet") @PathVariable Long id) {
-        // TODO: Add permission check (e.g., only owner or admin can view?)
         WalletResponseDTO wallet = walletService.getWalletById(id);
         return ResponseEntity.ok(wallet);
     }
 
-    @Operation(summary = "Get wallet transaction history", description = "Retrieves a paginated list of transactions for a specific wallet.")
+    @Operation(summary = "Get current user's transaction history", description = "Retrieves a paginated list of transactions for the authenticated user's wallet.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Successfully retrieved transaction history"),
         @ApiResponse(responseCode = "404", description = "Wallet not found")
     })
-    @GetMapping("/{id}/transactions")
-    public ResponseEntity<Page<WalletTransactionResponseDTO>> getWalletHistory(
-            @Parameter(description = "ID of the wallet") @PathVariable Long id,
-            Pageable pageable) {
-        // TODO: Add permission check
-        Page<WalletTransactionResponseDTO> history = walletService.getWalletHistoryById(id, pageable);
-        return ResponseEntity.ok(history);
+    @GetMapping("/me/history")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<PageResponseDTO<WalletTransactionResponseDTO>> getMyTransactionHistory(
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "transactionTime,desc") String sort) {
+
+        Pageable pageable = createPageable(page, size, sort);
+        
+        // Logic tìm walletId/ownerType từ principal (Service nên xử lý việc này)
+        Page<WalletTransactionResponseDTO> history = walletService.getTransactionHistoryForUser(principal, pageable);
+        
+        return ResponseEntity.ok(new PageResponseDTO<>(history));
     }
 
     @Operation(summary = "Transfer coins between wallets", description = "Transfers a specified amount from one wallet to another. Requires appropriate permissions.")
@@ -63,7 +74,7 @@ public class WalletController {
         @ApiResponse(responseCode = "404", description = "Source or destination wallet not found")
     })
     @PostMapping("/transfer")
-    @PreAuthorize("")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<WalletTransactionResponseDTO> transferCoins(
             @Valid @RequestBody WalletTransferRequestDTO transferRequest) {
         WalletTransactionResponseDTO transaction = walletService.transferCoins(transferRequest);
@@ -77,7 +88,7 @@ public class WalletController {
         @ApiResponse(responseCode = "404", description = "Student wallet not found")
     })
     @PostMapping("/redeem")
-    @PreAuthorize("")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<WalletTransactionResponseDTO> redeemCoins(
             @Valid @RequestBody WalletRedeemRequestDTO redeemRequest) {
         WalletTransactionResponseDTO transaction = walletService.redeemCoins(redeemRequest);
@@ -97,5 +108,19 @@ public class WalletController {
             @Valid @RequestBody WalletRollbackRequestDTO rollbackRequest) {
         WalletTransactionResponseDTO transaction = walletService.rollbackTransaction(rollbackRequest);
         return ResponseEntity.ok(transaction);
+    }
+
+    private Pageable createPageable(int page, int size, String sort) {
+        int pageIndex = page > 0 ? page - 1 : 0;
+        try {
+            String[] sortParams = sort.split(",");
+            String sortField = sortParams[0];
+            Sort.Direction direction = (sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")) 
+                                        ? Sort.Direction.DESC 
+                                        : Sort.Direction.ASC;
+            return PageRequest.of(pageIndex, size, Sort.by(direction, sortField));
+        } catch (Exception e) {
+            return PageRequest.of(pageIndex, size, Sort.by(Sort.Direction.DESC, "transactionTime"));
+        }
     }
 }

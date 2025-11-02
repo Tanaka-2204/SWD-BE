@@ -1,6 +1,6 @@
 package com.example.demo.exception;
 
-import com.example.demo.dto.response.GlobalApiResponse;
+import com.example.demo.dto.response.ErrorResponseDTO; // <<< SỬA ĐỔI
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -8,7 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseBody;
+// import org.springframework.web.bind.annotation.ResponseBody; // (Không cần @ResponseBody nếu dùng ResponseEntity)
 
 import java.util.stream.Collectors;
 
@@ -19,10 +19,9 @@ public class GlobalExceptionHandler {
 
     // Bắt lỗi 404
     @ExceptionHandler(ResourceNotFoundException.class)
-    @ResponseBody
-    public ResponseEntity<GlobalApiResponse<Object>> handleResourceNotFound(ResourceNotFoundException ex) {
+    public ResponseEntity<ErrorResponseDTO> handleResourceNotFound(ResourceNotFoundException ex) {
         logger.warn("Resource not found: {}", ex.getMessage());
-        GlobalApiResponse<Object> response = GlobalApiResponse.error(
+        ErrorResponseDTO response = new ErrorResponseDTO(
             HttpStatus.NOT_FOUND.value(), 
             ex.getMessage()
         );
@@ -31,10 +30,9 @@ public class GlobalExceptionHandler {
 
     // Bắt lỗi 409 (Conflict)
     @ExceptionHandler(DataIntegrityViolationException.class)
-    @ResponseBody
-    public ResponseEntity<GlobalApiResponse<Object>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+    public ResponseEntity<ErrorResponseDTO> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         logger.warn("Data integrity violation: {}", ex.getMessage());
-        GlobalApiResponse<Object> response = GlobalApiResponse.error(
+        ErrorResponseDTO response = new ErrorResponseDTO(
             HttpStatus.CONFLICT.value(), 
             ex.getMessage()
         );
@@ -43,10 +41,9 @@ public class GlobalExceptionHandler {
 
     // Bắt lỗi 400 (Bad Request)
     @ExceptionHandler(BadRequestException.class)
-    @ResponseBody
-    public ResponseEntity<GlobalApiResponse<Object>> handleBadRequest(BadRequestException ex) {
+    public ResponseEntity<ErrorResponseDTO> handleBadRequest(BadRequestException ex) {
         logger.warn("Bad request: {}", ex.getMessage());
-        GlobalApiResponse<Object> response = GlobalApiResponse.error(
+        ErrorResponseDTO response = new ErrorResponseDTO(
             HttpStatus.BAD_REQUEST.value(), 
             ex.getMessage()
         );
@@ -55,10 +52,9 @@ public class GlobalExceptionHandler {
     
     // Bắt lỗi 403 (Forbidden)
     @ExceptionHandler(ForbiddenException.class)
-    @ResponseBody
-    public ResponseEntity<GlobalApiResponse<Object>> handleForbidden(ForbiddenException ex) {
+    public ResponseEntity<ErrorResponseDTO> handleForbidden(ForbiddenException ex) {
         logger.warn("Forbidden: {}", ex.getMessage());
-        GlobalApiResponse<Object> response = GlobalApiResponse.error(
+        ErrorResponseDTO response = new ErrorResponseDTO(
             HttpStatus.FORBIDDEN.value(), 
             ex.getMessage()
         );
@@ -67,13 +63,12 @@ public class GlobalExceptionHandler {
 
     // Bắt lỗi validation (@Valid) - Rất quan trọng
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    @ResponseBody
-    public ResponseEntity<GlobalApiResponse<Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ErrorResponseDTO> handleValidationExceptions(MethodArgumentNotValidException ex) {
         String errorMessage = ex.getBindingResult().getFieldErrors().stream()
                 .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
                 .collect(Collectors.joining("; "));
         logger.warn("Validation error: {}", errorMessage);
-        GlobalApiResponse<Object> response = GlobalApiResponse.error(
+        ErrorResponseDTO response = new ErrorResponseDTO(
             HttpStatus.BAD_REQUEST.value(), 
             errorMessage
         );
@@ -82,10 +77,9 @@ public class GlobalExceptionHandler {
 
     // Bắt tất cả các lỗi 500 (Internal Server Error)
     @ExceptionHandler(Exception.class)
-    @ResponseBody
-    public ResponseEntity<GlobalApiResponse<Object>> handleGenericException(Exception ex) {
+    public ResponseEntity<ErrorResponseDTO> handleGenericException(Exception ex) {
         logger.error("Internal server error: ", ex);
-        GlobalApiResponse<Object> response = GlobalApiResponse.error(
+        ErrorResponseDTO response = new ErrorResponseDTO(
             HttpStatus.INTERNAL_SERVER_ERROR.value(), 
             "An unexpected internal server error occurred. Please try again later."
         );

@@ -1,13 +1,16 @@
 package com.example.demo.service.impl;
 
+import com.example.demo.config.AuthPrincipal;
 import com.example.demo.dto.request.*;
 import com.example.demo.dto.response.*;
 import com.example.demo.entity.*;
 import com.example.demo.exception.*;
 import com.example.demo.repository.*;
 import com.example.demo.service.WalletService;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -21,16 +24,16 @@ public class WalletServiceImpl implements WalletService {
 
     private final WalletRepository walletRepository;
     private final WalletTransactionRepository transactionRepository;
+    private StudentRepository studentRepository;
     private final PartnerRepository partnerRepository;
 
     private static final Long ADMIN_WALLET_OWNER_ID = 1L; // Cấu hình Admin Wallet ID
     private static final String ADMIN_OWNER_TYPE = "ADMIN";
 
-    public WalletServiceImpl(WalletRepository walletRepository,
-                             WalletTransactionRepository transactionRepository,
-                             PartnerRepository partnerRepository) {
+    public WalletServiceImpl(WalletRepository walletRepository, WalletTransactionRepository transactionRepository, StudentRepository studentRepository, PartnerRepository partnerRepository) {
         this.walletRepository = walletRepository;
         this.transactionRepository = transactionRepository;
+        this.studentRepository = studentRepository;
         this.partnerRepository = partnerRepository;
     }
 
@@ -54,17 +57,54 @@ public class WalletServiceImpl implements WalletService {
         return convertToWalletDTO(wallet);
     }
     // =======================================================
+    
+    // (Hàm này được PartnerController gọi, giữ nguyên)
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WalletTransactionResponseDTO> getTransactionHistory(Long ownerId, String ownerType, Pageable pageable) {
+        
+        // SỬA LỖI TẠI ĐÂY:
+        // Lỗi của bạn là: walletRepository.findByOwnerIdAndOwnerType(ownerId, ownerType, pageable)
+        // Sửa thành:
+        Wallet wallet = walletRepository.findByOwnerTypeAndOwnerId(ownerType, ownerId) 
+                .orElseThrow(() -> new ResourceNotFoundException(ownerType + " wallet not found for ID: " + ownerId));
+        
+        // SỬA LỖI TẠI ĐÂY: (Gọi hàm 'findByWalletId' đã sửa ở Bước 2)
+        return transactionRepository.findByWalletId(wallet.getId(), pageable)
+                                          .map(this::convertToTransactionDTO); // (Dùng hàm helper của bạn)
+    }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<WalletTransactionResponseDTO> getWalletHistoryById(Long walletId, Pageable pageable) {
-        if (!walletRepository.existsById(walletId)) {
-            throw new ResourceNotFoundException("Wallet not found with id: " + walletId);
-        }
-        Page<WalletTransaction> transactions = transactionRepository.findByWalletIdOrderByCreatedAtDesc(walletId, pageable);
-        return transactions.map(this::convertToTransactionDTO);
-    }
+    public Page<WalletTransactionResponseDTO> getTransactionHistoryForUser(AuthPrincipal principal, Pageable pageable) {
+        
+        Long walletId = null;
 
+        // 1. Tìm Wallet ID dựa trên vai trò
+        if (principal.isPartner()) {
+            Partner partner = partnerRepository.findById(principal.getPartnerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Partner profile not found for ID: " + principal.getPartnerId()));
+            if(partner.getWallet() == null) throw new ResourceNotFoundException("Partner wallet not found.");
+            walletId = partner.getWallet().getId();
+            
+        } else if (principal.isStudent()) {
+            Student student = studentRepository.findById(principal.getStudentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Student profile not found for ID: " + principal.getStudentId()));
+            if(student.getWallet() == null) throw new ResourceNotFoundException("Student wallet not found.");
+            walletId = student.getWallet().getId();
+        } else if (principal.isAdmin()) {
+             throw new ForbiddenException("Admin does not have a personal wallet.");
+        }
+
+        if (walletId == null) {
+            throw new ResourceNotFoundException("Wallet not found for the current user.");
+        }
+
+        // 2. Gọi Repo (SỬA LỖI: Gọi hàm 'findByWalletId' đã sửa ở Bước 2)
+        return transactionRepository.findByWalletId(walletId, pageable)
+                                          .map(this::convertToTransactionDTO); // (Dùng hàm helper của bạn)
+    }
+    
     // --- WRITE OPERATIONS ---
     @Override
     @Transactional
