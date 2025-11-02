@@ -107,7 +107,7 @@ public class PartnerController {
             @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "transactionTime,desc") String sort) {
+            @RequestParam(defaultValue = "createdAt,desc") String sort) {
 
         Pageable pageable = createPageable(page, size, sort);
         Page<WalletTransactionResponseDTO> history = walletService.getTransactionHistory(principal.getPartnerId(), "PARTNER", pageable);

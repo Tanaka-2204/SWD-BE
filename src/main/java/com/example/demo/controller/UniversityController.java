@@ -30,7 +30,7 @@ public class UniversityController {
     @ApiResponse(responseCode = "200", description = "Successfully retrieved list")
     @GetMapping
     public ResponseEntity<PageResponseDTO<UniversityResponseDTO>> getAllUniversities(
-            @RequestParam(defaultValue = "1G") int page,
+            @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size, // Mặc định 20 trường
             @RequestParam(defaultValue = "name,asc") String sort) {
         

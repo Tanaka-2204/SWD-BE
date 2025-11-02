@@ -60,10 +60,6 @@ public class EventController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt,desc") String sort) {
-
-        // ==========================================================
-        // <<< SỬA LỖI TẠI ĐÂY: Dùng hàm helper
-        // ==========================================================
         Pageable pageable = createPageable(page, size, sort, "createdAt");
 
         Specification<Event> spec = EventSpecifications.filterBy(categoryId, status);
@@ -151,7 +147,7 @@ public class EventController {
             // --- YÊU CẦU ĐƠN GIẢN TỪ FE ---
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "fullName,asc") String sort) {
+            @RequestParam(defaultValue = "student.fullName,asc") String sort) {
 
         // --- BACKEND TỰ XỬ LÝ LOGIC PHỨC TẠP ---
         Pageable pageable = createPageable(page, size, sort, "student.fullName");
