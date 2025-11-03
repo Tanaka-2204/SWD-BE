@@ -12,9 +12,11 @@ import com.example.demo.service.UniversityService;
 import com.example.demo.dto.response.EventCategoryResponseDTO;
 import com.example.demo.dto.response.FeedbackResponseDTO;
 import com.example.demo.dto.response.PageResponseDTO;
+import com.example.demo.dto.response.EventResponseDTO;
 import com.example.demo.dto.response.PartnerResponseDTO;
 import com.example.demo.dto.response.WalletTransactionResponseDTO;
 import com.example.demo.service.EventCategoryService;
+import com.example.demo.service.EventService;
 import com.example.demo.service.FeedbackService;
 import com.example.demo.service.PartnerService;
 import com.example.demo.service.WalletService;
@@ -44,6 +46,7 @@ public class AdminController {
     private final PartnerService partnerService;
     private final WalletService walletService;
     private final EventCategoryService eventCategoryService;
+    private final EventService eventService;
     private final StudentService studentService;
     private final UniversityService universityService;
     private final FeedbackService feedbackService;
@@ -51,10 +54,12 @@ public class AdminController {
     public AdminController(PartnerService partnerService,
                            WalletService walletService,
                            EventCategoryService eventCategoryService,
+                           EventService eventService,
                            StudentService studentService, UniversityService universityService, FeedbackService feedbackService) {
         this.partnerService = partnerService;
         this.walletService = walletService;
         this.eventCategoryService = eventCategoryService;
+        this.eventService = eventService;
         this.studentService = studentService;
         this.universityService = universityService;
         this.feedbackService = feedbackService;
@@ -265,5 +270,24 @@ public class AdminController {
             // (Xử lý lỗi nếu chuỗi sort bị sai, ví dụ dùng 'id' làm mặc định)
             return PageRequest.of(pageIndex, size, Sort.by(Sort.Direction.ASC, "id"));
         }
+    }
+    @Operation(summary = "Admin gets all wallet transactions", description = "Retrieves a paginated list of all wallet transactions in the system.")
+    @ApiResponse(responseCode = "200", description = "Successfully retrieved transactions")
+    @GetMapping("/wallets/transactions")
+    public ResponseEntity<Page<WalletTransactionResponseDTO>> getAllTransactions(Pageable pageable) {
+        Page<WalletTransactionResponseDTO> transactions = walletService.getAllTransactions(pageable);
+        return ResponseEntity.ok(transactions);
+    }
+
+    @Operation(summary = "Admin approves a pending event", description = "Changes event status from PENDING to APPROVED.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Event approved successfully"),
+        @ApiResponse(responseCode = "404", description = "Event not found"),
+        @ApiResponse(responseCode = "409", description = "Event is not in PENDING status")
+    })
+    @PatchMapping("/events/{id}/approve")
+    public ResponseEntity<EventResponseDTO> approveEvent(@PathVariable Long id) {
+        EventResponseDTO approvedEvent = eventService.approveEvent(id);
+        return ResponseEntity.ok(approvedEvent);
     }
 }

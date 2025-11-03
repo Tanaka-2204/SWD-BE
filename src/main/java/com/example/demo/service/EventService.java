@@ -43,5 +43,9 @@ public interface EventService {
      * @param eventId ID của sự kiện cần hoàn tất
      * @return EventResponseDTO của sự kiện đã được cập nhật trạng thái
      */
+    EventResponseDTO finalizeEvent(Long eventId);
+
+    // Admin approve event
+    EventResponseDTO approveEvent(Long eventId);
     EventResponseDTO finalizeEvent(Long eventId, AuthPrincipal principal);
 }

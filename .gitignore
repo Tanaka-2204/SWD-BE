@@ -8,9 +8,11 @@ target/
 .env.*
 !.env.example
 *.env
+application-local.properties
 application-secrets.properties
 application-prod.properties
 application-dev.properties
+src/main/resources/application-local.properties
 logs/
 *.log
 

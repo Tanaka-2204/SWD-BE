@@ -303,19 +303,16 @@ public class EventServiceImpl implements EventService {
     // ==========================================================
     @Override
     @Transactional
-    public EventResponseDTO finalizeEvent(Long eventId, AuthPrincipal principal) {
+    public EventResponseDTO finalizeEvent(Long eventId) {
         // 1. Tìm sự kiện
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
 
-        // <<< LOGIC BẢO MẬT: Kiểm tra quyền sở hữu
-        checkEventOwnership(event, principal);
-        
         // 2. Kiểm tra trạng thái
         if ("FINALIZED".equals(event.getStatus())) {
             throw new DataIntegrityViolationException("Event has already been finalized.");
         }
-        
+
         // 3. Xác định tổng số điểm cần chi trả (Hoàn cọc + Thưởng)
         Integer depositPoints = event.getPointCostToRegister() != null ? event.getPointCostToRegister() : 0;
         Integer rewardPoints = event.getTotalRewardPoints() != null ? event.getTotalRewardPoints() : 0;
@@ -348,21 +345,21 @@ public class EventServiceImpl implements EventService {
         BigDecimal requiredBudget = totalPayoutAmount.multiply(new BigDecimal(successfulCheckins.size()));
         if (eventWallet.getBalance().compareTo(requiredBudget) < 0) {
             throw new ForbiddenException(
-                    "Event wallet has insufficient funds to finalize rewards. Required: " + requiredBudget 
+                    "Event wallet has insufficient funds to finalize rewards. Required: " + requiredBudget
                     + ", Available: " + eventWallet.getBalance());
         }
 
         // 7. Thực hiện giao dịch (Event Wallet -> Student Wallet)
         List<WalletTransaction> transactionsToSave = new ArrayList<>();
-        List<Wallet> studentWalletsToSave = new ArrayList<>(); 
+        List<Wallet> studentWalletsToSave = new ArrayList<>();
 
         for (Checkin checkin : successfulCheckins) {
             Student student = checkin.getStudent();
             Optional<Wallet> studentWalletOpt = walletRepository.findByOwnerTypeAndOwnerId("STUDENT", student.getId());
-            
+
             if (studentWalletOpt.isEmpty()) {
                 logger.error("Student wallet not found for student ID: {}. Skipping payout.", student.getId());
-                continue; 
+                continue;
             }
             Wallet studentWallet = studentWalletOpt.get();
 
@@ -372,8 +369,8 @@ public class EventServiceImpl implements EventService {
 
             WalletTransaction studentTx = new WalletTransaction();
             studentTx.setWallet(studentWallet);
-            studentTx.setCounterparty(eventWallet); 
-            studentTx.setTxnType("EVENT_FINAL_PAYOUT"); 
+            studentTx.setCounterparty(eventWallet);
+            studentTx.setTxnType("EVENT_FINAL_PAYOUT");
             studentTx.setAmount(totalPayoutAmount);
             studentTx.setReferenceType("EVENT");
             studentTx.setReferenceId(event.getId());
@@ -381,18 +378,18 @@ public class EventServiceImpl implements EventService {
 
             WalletTransaction eventTx = new WalletTransaction();
             eventTx.setWallet(eventWallet);
-            eventTx.setCounterparty(studentWallet); 
+            eventTx.setCounterparty(studentWallet);
             eventTx.setTxnType("EVENT_PAYOUT");
-            eventTx.setAmount(totalPayoutAmount.negate()); 
+            eventTx.setAmount(totalPayoutAmount.negate());
             eventTx.setReferenceType("EVENT");
             eventTx.setReferenceId(event.getId());
             transactionsToSave.add(eventTx);
         }
 
         // 8. Lưu tất cả thay đổi (Tối ưu hóa)
-        walletRepository.save(eventWallet); 
-        walletRepository.saveAll(studentWalletsToSave); 
-        transactionRepository.saveAll(transactionsToSave); 
+        walletRepository.save(eventWallet);
+        walletRepository.saveAll(studentWalletsToSave);
+        transactionRepository.saveAll(transactionsToSave);
 
         // 9. Cập nhật trạng thái sự kiện
         event.setStatus("FINALIZED");
@@ -401,6 +398,123 @@ public class EventServiceImpl implements EventService {
         return convertToDTO(savedEvent);
     }
 
+    @Override
+    @Transactional
+    public EventResponseDTO finalizeEvent(Long eventId, AuthPrincipal principal) {
+        // 1. Tìm sự kiện
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
+
+        // <<< LOGIC BẢO MẬT: Kiểm tra quyền sở hữu
+        checkEventOwnership(event, principal);
+
+        // 2. Kiểm tra trạng thái
+        if ("FINALIZED".equals(event.getStatus())) {
+            throw new DataIntegrityViolationException("Event has already been finalized.");
+        }
+
+        // 3. Xác định tổng số điểm cần chi trả (Hoàn cọc + Thưởng)
+        Integer depositPoints = event.getPointCostToRegister() != null ? event.getPointCostToRegister() : 0;
+        Integer rewardPoints = event.getTotalRewardPoints() != null ? event.getTotalRewardPoints() : 0;
+        BigDecimal totalPayoutAmount = new BigDecimal(depositPoints + rewardPoints);
+
+        if (totalPayoutAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            logger.warn("Event {} has no payout amount. Finalizing without transactions.", eventId);
+            event.setStatus("FINALIZED");
+            Event savedEvent = eventRepository.save(event);
+            return convertToDTO(savedEvent);
+        }
+
+        // 4. Lấy VÍ SỰ KIỆN (Event Wallet) làm nguồn tiền
+        Wallet eventWallet = event.getWallet();
+        if (eventWallet == null) {
+            throw new ResourceNotFoundException("CRITICAL: Event Wallet not found for this event.");
+        }
+
+        // 5. Lấy danh sách sinh viên đã check-in thành công (verified = true)
+        List<Checkin> successfulCheckins = checkinRepository.findAllByEventIdAndVerifiedTrue(eventId);
+
+        if (successfulCheckins.isEmpty()) {
+            logger.warn("Event {} has no successful check-ins. Finalizing without transactions.", eventId);
+            event.setStatus("FINALIZED");
+            Event savedEvent = eventRepository.save(event);
+            return convertToDTO(savedEvent);
+        }
+
+        // 6. Kiểm tra ngân sách VÍ SỰ KIỆN
+        BigDecimal requiredBudget = totalPayoutAmount.multiply(new BigDecimal(successfulCheckins.size()));
+        if (eventWallet.getBalance().compareTo(requiredBudget) < 0) {
+            throw new ForbiddenException(
+                    "Event wallet has insufficient funds to finalize rewards. Required: " + requiredBudget
+                    + ", Available: " + eventWallet.getBalance());
+        }
+
+        // 7. Thực hiện giao dịch (Event Wallet -> Student Wallet)
+        List<WalletTransaction> transactionsToSave = new ArrayList<>();
+        List<Wallet> studentWalletsToSave = new ArrayList<>();
+
+        for (Checkin checkin : successfulCheckins) {
+            Student student = checkin.getStudent();
+            Optional<Wallet> studentWalletOpt = walletRepository.findByOwnerTypeAndOwnerId("STUDENT", student.getId());
+
+            if (studentWalletOpt.isEmpty()) {
+                logger.error("Student wallet not found for student ID: {}. Skipping payout.", student.getId());
+                continue;
+            }
+            Wallet studentWallet = studentWalletOpt.get();
+
+            eventWallet.setBalance(eventWallet.getBalance().subtract(totalPayoutAmount));
+            studentWallet.setBalance(studentWallet.getBalance().add(totalPayoutAmount));
+            studentWalletsToSave.add(studentWallet);
+
+            WalletTransaction studentTx = new WalletTransaction();
+            studentTx.setWallet(studentWallet);
+            studentTx.setCounterparty(eventWallet);
+            studentTx.setTxnType("EVENT_FINAL_PAYOUT");
+            studentTx.setAmount(totalPayoutAmount);
+            studentTx.setReferenceType("EVENT");
+            studentTx.setReferenceId(event.getId());
+            transactionsToSave.add(studentTx);
+
+            WalletTransaction eventTx = new WalletTransaction();
+            eventTx.setWallet(eventWallet);
+            eventTx.setCounterparty(studentWallet);
+            eventTx.setTxnType("EVENT_PAYOUT");
+            eventTx.setAmount(totalPayoutAmount.negate());
+            eventTx.setReferenceType("EVENT");
+            eventTx.setReferenceId(event.getId());
+            transactionsToSave.add(eventTx);
+        }
+
+        // 8. Lưu tất cả thay đổi (Tối ưu hóa)
+        walletRepository.save(eventWallet);
+        walletRepository.saveAll(studentWalletsToSave);
+        transactionRepository.saveAll(transactionsToSave);
+
+        // 9. Cập nhật trạng thái sự kiện
+        event.setStatus("FINALIZED");
+        Event savedEvent = eventRepository.save(event);
+
+        return convertToDTO(savedEvent);
+    }
+
+    @Override
+    @Transactional
+    public EventResponseDTO approveEvent(Long eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
+
+        if (!"PENDING".equals(event.getStatus())) {
+            throw new IllegalStateException("Event is not in PENDING status");
+        }
+
+        event.setStatus("APPROVED");
+        Event savedEvent = eventRepository.save(event);
+
+        return convertToDTO(savedEvent);
+    }
+
+    // --- HELPER METHOD ---
     // ==========================================================
     // HELPER METHODS
     // ==========================================================
