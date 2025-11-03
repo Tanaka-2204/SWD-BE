@@ -10,7 +10,7 @@ import java.util.Optional;
 @Repository
 public interface WalletTransactionRepository extends JpaRepository<WalletTransaction, Long> {
 
-    Page<WalletTransaction> findByWalletIdOrderByCreatedAtDesc(Long walletId, Pageable pageable);
+    Page<WalletTransaction> findByWalletId(Long walletId, Pageable pageable);
 
     /**
      * Finds a transaction by its idempotency key to prevent duplicate operations.
@@ -22,4 +22,9 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
      * Optionally check if it has already been refunded.
      */
     // Optional<WalletTransaction> findByIdAndRefundTxnIdIsNull(Long id); // Ví dụ kiểm tra đã refund chưa
+
+    /**
+     * Finds all transactions for admin monitoring, ordered by creation date descending.
+     */
+    Page<WalletTransaction> findAllByOrderByCreatedAtDesc(Pageable pageable);
 }

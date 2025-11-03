@@ -12,4 +12,5 @@ public class PartnerResponseDTO {
     private String contactPhone;
     private Long walletId;
     private OffsetDateTime createdAt;
+    private String status;
 }

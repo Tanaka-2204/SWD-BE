@@ -1,0 +1,49 @@
+# ====================================================
+# APPLICATION PROPERTIES TEMPLATE
+# Copy file này thành application.properties và điền values
+# ====================================================
+
+spring.application.name=loyalty-system
+server.port=${SERVER_PORT:8080}
+
+# --- 1. POSTGRESQL ---
+spring.datasource.url=jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:loyalty_system}
+spring.datasource.username=${DB_USER:your_username}
+spring.datasource.password=${DB_PASSWORD:your_password}
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# Connection Pool
+spring.datasource.hikari.maximum-pool-size=10
+spring.datasource.hikari.minimum-idle=5
+spring.datasource.hikari.connection-timeout=30000
+
+# --- 2. JPA/HIBERNATE ---
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=false
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.open-in-view=false
+
+# --- 3. SECURITY (AWS COGNITO) ---
+spring.security.oauth2.resourceserver.jwt.jwk-set-uri=${JWT_JWK_SET_URI:https://cognito-idp.region.amazonaws.com/userPoolId/.well-known/jwks.json}
+
+# --- 4. AWS S3 ---
+aws.s3.access-key=${AWS_ACCESS_KEY_ID}
+aws.s3.secret-key=${AWS_SECRET_ACCESS_KEY}
+aws.s3.region=${AWS_REGION:ap-southeast-1}
+aws.s3.bucket-name=${AWS_S3_BUCKET:your-bucket-name}
+
+# --- 5. ACTUATOR ---
+management.endpoints.web.exposure.include=health,info,metrics
+management.endpoint.health.show-details=always
+management.health.db.enabled=true
+
+# --- 6. LOGGING ---
+logging.level.root=INFO
+logging.level.com.example.demo=DEBUG
+logging.level.org.springframework.web=INFO
+logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n
+
+# --- 7. FILE UPLOAD ---
+spring.servlet.multipart.max-file-size=10MB
+spring.servlet.multipart.max-request-size=10MB

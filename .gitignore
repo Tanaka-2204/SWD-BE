@@ -3,14 +3,26 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
-### Security ###
- .env
- *.env
- application.properties
- application-prod.properties.local
- application-dev.properties.local
- logs/
- *.log
+### Security & Sensitive Files ###
+.env
+.env.*
+!.env.example
+*.env
+application-secrets.properties
+application-prod.properties
+application-dev.properties
+logs/
+*.log
+
+### AWS Credentials ###
+aws-credentials.json
+credentials.json
+*.pem
+*.key
+
+### Secrets ###
+secrets/
+*.secret
 ### STS ###
 .apt_generated
 .classpath

@@ -6,6 +6,11 @@ import lombok.Data;
 
 @Data
 public class PartnerRequestDTO {
+    
+    @NotBlank // THÊM USERNAME (không phải email)
+    @Size(min = 3, max = 100) // Đặt giới hạn phù hợp
+    private String username;
+    
     @NotBlank
     @Size(max = 200)
     private String name;
@@ -14,5 +19,6 @@ public class PartnerRequestDTO {
     private String organizationType; // longterm | shortterm 
 
     private String contactEmail;
+    
     private String contactPhone;
 }

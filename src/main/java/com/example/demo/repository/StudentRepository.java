@@ -9,5 +9,7 @@ import java.util.Optional;
 public interface StudentRepository extends JpaRepository<Student, Long> {
     Optional<Student> findByPhoneNumber(String phoneNumber);
     Optional<Student> findByEmail(String email);
+    boolean existsByUniversityId(Long universityId);
     Optional<Student> findByCognitoSub(String cognitoSub);
+    // Custom upsert method can be defined here if needed
 }

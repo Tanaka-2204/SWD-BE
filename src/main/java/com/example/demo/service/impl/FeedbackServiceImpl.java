@@ -9,56 +9,80 @@ import com.example.demo.service.FeedbackService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+// <<< SỬA ĐỔI: Thêm import
+import com.example.demo.repository.CheckinRepository; 
+
 @Service
 public class FeedbackServiceImpl implements FeedbackService {
 
     private final FeedbackRepository feedbackRepository;
     private final StudentRepository studentRepository;
     private final EventRepository eventRepository;
-    private final RegistrationRepository registrationRepository;
+    // private final RegistrationRepository registrationRepository; // <<< XÓA
+    private final CheckinRepository checkinRepository; // <<< SỬA ĐỔI: Thay thế
 
-    public FeedbackServiceImpl(FeedbackRepository feedbackRepository, StudentRepository studentRepository, EventRepository eventRepository, RegistrationRepository registrationRepository) {
+    // <<< SỬA ĐỔI HÀM TẠO (Constructor)
+    public FeedbackServiceImpl(FeedbackRepository feedbackRepository, StudentRepository studentRepository,
+                               EventRepository eventRepository, CheckinRepository checkinRepository) {
         this.feedbackRepository = feedbackRepository;
         this.studentRepository = studentRepository;
         this.eventRepository = eventRepository;
-        this.registrationRepository = registrationRepository;
+        this.checkinRepository = checkinRepository; // <<< SỬA ĐỔI
     }
 
     @Override
     @Transactional
-    public FeedbackResponseDTO createFeedback(String cognitoSub, Long eventId, FeedbackRequestDTO requestDTO) {
-        // 1. Tìm sinh viên
-        Student student = studentRepository.findByCognitoSub(cognitoSub)
-                .orElseThrow(() -> new ResourceNotFoundException("Student not found."));
+    public FeedbackResponseDTO createFeedback(Long studentId, Long eventId, FeedbackRequestDTO requestDTO) {
 
-        // 2. Tìm sự kiện
+        // 1. Tìm sinh viên (Giữ nguyên)
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found.")); 
+
+        // 2. Tìm sự kiện (Giữ nguyên)
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventId));
-        
-        // 3. (Quan trọng) Kiểm tra xem sinh viên đã tham gia sự kiện này chưa
-        registrationRepository.findByStudentIdAndEventId(student.getId(), eventId)
-                .orElseThrow(() -> new ForbiddenException("You did not register for this event."));
-        
-        // 4. Kiểm tra xem đã feedback chưa
+
+        // 3. (Quan trọng) Kiểm tra xem sinh viên đã đăng ký sự kiện này chưa
+        // <<< SỬA ĐỔI LOGIC: Dùng CheckinRepository
+        boolean isRegistered = checkinRepository.existsByEventIdAndStudentId(student.getId(), eventId);
+        if (!isRegistered) {
+             throw new ForbiddenException("You did not register for this event.");
+        }
+        // <<< KẾT THÚC SỬA ĐỔI
+
+        // 4. Kiểm tra xem đã feedback chưa (Giữ nguyên)
         feedbackRepository.findByStudentIdAndEventId(student.getId(), eventId).ifPresent(f -> {
             throw new DataIntegrityViolationException("You have already submitted feedback for this event.");
         });
 
-        // 5. Tạo feedback
+        // 5. Tạo feedback (Giữ nguyên)
         Feedback feedback = new Feedback();
         feedback.setStudent(student);
         feedback.setEvent(event);
         feedback.setRating(requestDTO.getRating());
         feedback.setComments(requestDTO.getComments());
-        
+
         Feedback savedFeedback = feedbackRepository.save(feedback);
-        
+
         return convertToDTO(savedFeedback);
     }
-    
-    // Helper
+
+    // Helper (Giữ nguyên)
     private FeedbackResponseDTO convertToDTO(Feedback feedback) {
-        //... Logic chuyển đổi
-        return new FeedbackResponseDTO();
+        FeedbackResponseDTO dto = new FeedbackResponseDTO();
+        dto.setId(feedback.getId());
+        dto.setRating(feedback.getRating());
+        dto.setComments(feedback.getComments());
+        dto.setSentimentLabel(feedback.getSentimentLabel());
+        dto.setCreatedAt(feedback.getCreatedAt());
+
+        if (feedback.getStudent() != null) {
+            dto.setStudentId(feedback.getStudent().getId());
+        }
+        if (feedback.getEvent() != null) {
+            dto.setEventId(feedback.getEvent().getId());
+            dto.setEventTitle(feedback.getEvent().getTitle());
+        }
+        return dto;
     }
 }
