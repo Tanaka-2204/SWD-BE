@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.config.AuthPrincipal;
 import com.example.demo.dto.request.ProductInvoiceRequestDTO;
 import com.example.demo.dto.response.ProductInvoiceResponseDTO;
 import com.example.demo.dto.response.ProductResponseDTO;
@@ -12,6 +13,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -60,18 +63,39 @@ public class ProductInvoiceController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/{id}/deliver")
-    @Operation(summary = "Deliver invoice - mark as delivered")
-    public ResponseEntity<ProductResponseDTO> deliverInvoice(@PathVariable Long id, @RequestParam String deliveredBy) {
-        ProductResponseDTO product = productInvoiceService.deliverInvoice(id, deliveredBy);
-        return ResponseEntity.ok(product);
+    @PostMapping("/{id}/confirm-delivery")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('PARTNERS')")
+    @Operation(summary = "Confirm delivery - Change invoice status from PENDING to DELIVERED (ADMIN/PARTNERS only)")
+    public ResponseEntity<ProductInvoiceResponseDTO> confirmDelivery(
+            @Parameter(description = "ID of the invoice to confirm delivery") @PathVariable Long id,
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal) {
+        
+        // Lấy thông tin người xác nhận từ principal
+        String deliveredBy = principal.getUsername(); // hoặc principal.getEmail()
+        
+        // Gọi service để cập nhật status (cập nhật product stock nếu cần)
+        productInvoiceService.deliverInvoice(id, deliveredBy);
+        
+        // Lấy lại thông tin invoice đã cập nhật để trả về đầy đủ
+        ProductInvoiceResponseDTO invoiceResponse = productInvoiceService.getInvoiceById(id);
+        
+        return ResponseEntity.ok(invoiceResponse);
     }
 
     @PostMapping("/{id}/cancel")
-    @Operation(summary = "Cancel invoice - refund balance and restore stock")
-    public ResponseEntity<ProductResponseDTO> cancelInvoice(@PathVariable Long id) {
-        ProductResponseDTO product = productInvoiceService.cancelInvoice(id);
-        return ResponseEntity.ok(product);
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Cancel invoice - Refund balance and restore stock (All authenticated users)")
+    public ResponseEntity<ProductInvoiceResponseDTO> cancelInvoice(
+            @Parameter(description = "ID of the invoice to cancel") @PathVariable Long id,
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal) {
+        
+        // Gọi service để hủy đơn hàng (hoàn tiền và restore stock)
+        productInvoiceService.cancelInvoice(id);
+        
+        // Lấy lại thông tin invoice đã cập nhật để trả về đầy đủ
+        ProductInvoiceResponseDTO invoiceResponse = productInvoiceService.getInvoiceById(id);
+        
+        return ResponseEntity.ok(invoiceResponse);
     }
 
     @GetMapping("/stats")
