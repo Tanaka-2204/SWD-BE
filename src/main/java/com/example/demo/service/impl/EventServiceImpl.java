@@ -409,7 +409,7 @@ public class EventServiceImpl implements EventService {
         checkEventOwnership(event, principal);
 
         // 2. Kiểm tra trạng thái
-        if ("FINALIZED".equals(event.getStatus())) {
+        if ("FINISHED".equals(event.getStatus())) {
             throw new DataIntegrityViolationException("Event has already been finalized.");
         }
 

@@ -255,22 +255,6 @@ public class AdminController {
         return ResponseEntity.ok(new PageResponseDTO<>(feedbackPage));
     }
 
-    private Pageable createPageable(int page, int size, String sort) {
-        int pageIndex = page > 0 ? page - 1 : 0; // Chuyển 1-based (FE) về 0-based (Spring)
-
-        try {
-            String[] sortParams = sort.split(",");
-            String sortField = sortParams[0];
-            Sort.Direction direction = (sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")) 
-                                        ? Sort.Direction.DESC 
-                                        : Sort.Direction.ASC;
-            
-            return PageRequest.of(pageIndex, size, Sort.by(direction, sortField));
-        } catch (Exception e) {
-            // (Xử lý lỗi nếu chuỗi sort bị sai, ví dụ dùng 'id' làm mặc định)
-            return PageRequest.of(pageIndex, size, Sort.by(Sort.Direction.ASC, "id"));
-        }
-    }
     @Operation(summary = "Admin gets all wallet transactions", description = "Retrieves a paginated list of all wallet transactions in the system.")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved transactions")
     @GetMapping("/wallets/transactions")
@@ -289,5 +273,22 @@ public class AdminController {
     public ResponseEntity<EventResponseDTO> approveEvent(@PathVariable Long id) {
         EventResponseDTO approvedEvent = eventService.approveEvent(id);
         return ResponseEntity.ok(approvedEvent);
+    }
+
+    private Pageable createPageable(int page, int size, String sort) {
+        int pageIndex = page > 0 ? page - 1 : 0; // Chuyển 1-based (FE) về 0-based (Spring)
+
+        try {
+            String[] sortParams = sort.split(",");
+            String sortField = sortParams[0];
+            Sort.Direction direction = (sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")) 
+                                        ? Sort.Direction.DESC 
+                                        : Sort.Direction.ASC;
+            
+            return PageRequest.of(pageIndex, size, Sort.by(direction, sortField));
+        } catch (Exception e) {
+            // (Xử lý lỗi nếu chuỗi sort bị sai, ví dụ dùng 'id' làm mặc định)
+            return PageRequest.of(pageIndex, size, Sort.by(Sort.Direction.ASC, "id"));
+        }
     }
 }
