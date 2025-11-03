@@ -13,7 +13,7 @@ RUN mvn dependency:go-offline -B
 
 # Copy toàn bộ source code và build
 COPY src ./src
-RUN mvn clean package -DskipTests -B -Dassembly.skip=true
+RUN mvn clean package -DskipTests -B
 
 # ==============================================================================
 # STAGE 2: Runtime Stage (JRE 17 Alpine) - Tối ưu và Bảo mật
