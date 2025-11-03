@@ -104,7 +104,7 @@ public class StudentController {
             @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "startTime,desc") String sort) {
+            @RequestParam(defaultValue = "checkinTime,desc") String sort) {
 
         Pageable pageable = createPageable(page, size, sort);
         

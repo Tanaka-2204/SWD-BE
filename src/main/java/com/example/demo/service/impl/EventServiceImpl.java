@@ -21,7 +21,6 @@ import com.example.demo.repository.WalletTransactionRepository;
 import com.example.demo.repository.WalletRepository;
 import com.example.demo.repository.CheckinRepository;
 import com.example.demo.service.EventService;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -169,11 +168,7 @@ public class EventServiceImpl implements EventService {
     public Page<EventResponseDTO> getEventHistoryByStudent(Long studentId, Pageable pageable) {
         // Tìm các bản ghi checkin của student (đã đăng ký)
         Page<Checkin> checkins = checkinRepository.findByStudentId(studentId, pageable);
-        
-        // Chuyển đổi Page<Checkin> sang Page<Event> rồi sang Page<EventResponseDTO>
-        // (Giả sử bạn có hàm 'convertToDTO')
-        return checkins.map(Checkin::getEvent)
-                       .map(this::convertToDTO);
+        return checkins.map(Checkin::getEvent).map(this::convertToDTO);
     }
 
     // --- READ ---

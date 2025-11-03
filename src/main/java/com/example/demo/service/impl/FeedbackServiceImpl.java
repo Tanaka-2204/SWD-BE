@@ -7,10 +7,9 @@ import com.example.demo.exception.*;
 import com.example.demo.repository.*;
 import com.example.demo.service.FeedbackService;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-// <<< SỬA ĐỔI: Thêm import
-import com.example.demo.repository.CheckinRepository; 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional; 
 
 @Service
 public class FeedbackServiceImpl implements FeedbackService {
@@ -44,7 +43,7 @@ public class FeedbackServiceImpl implements FeedbackService {
 
         // 3. (Quan trọng) Kiểm tra xem sinh viên đã đăng ký sự kiện này chưa
         // <<< SỬA ĐỔI LOGIC: Dùng CheckinRepository
-        boolean isRegistered = checkinRepository.existsByEventIdAndStudentId(student.getId(), eventId);
+        boolean isRegistered = checkinRepository.existsByEventIdAndStudentId(eventId, student.getId());
         if (!isRegistered) {
              throw new ForbiddenException("You did not register for this event.");
         }
@@ -67,6 +66,32 @@ public class FeedbackServiceImpl implements FeedbackService {
         return convertToDTO(savedFeedback);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<FeedbackResponseDTO> getAllFeedbackByEvent(Long eventId, Pageable pageable) {
+        // Gọi hàm findByEventId (sẽ tạo ở Bước 5)
+        // Hàm này đã có @EntityGraph nên convertToDTO sẽ an toàn
+        Page<Feedback> feedbackPage = feedbackRepository.findByEventId(eventId, pageable);
+        return feedbackPage.map(this::convertToDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<FeedbackResponseDTO> getAllFeedback(Long eventId, Pageable pageable) {
+        Page<Feedback> feedbackPage;
+        
+        if (eventId != null) {
+            // Nếu có lọc, dùng lại hàm trên
+            feedbackPage = feedbackRepository.findByEventId(eventId, pageable);
+        } else {
+            // Nếu không lọc, lấy tất cả
+            // Hàm này đã có @EntityGraph (ở Bước 5) nên an toàn
+            feedbackPage = feedbackRepository.findAll(pageable);
+        }
+        
+        return feedbackPage.map(this::convertToDTO);
+    }
+
     // Helper (Giữ nguyên)
     private FeedbackResponseDTO convertToDTO(Feedback feedback) {
         FeedbackResponseDTO dto = new FeedbackResponseDTO();
@@ -78,10 +103,11 @@ public class FeedbackServiceImpl implements FeedbackService {
 
         if (feedback.getStudent() != null) {
             dto.setStudentId(feedback.getStudent().getId());
+            dto.setStudentName(feedback.getStudent().getFullName()); 
         }
         if (feedback.getEvent() != null) {
             dto.setEventId(feedback.getEvent().getId());
-            dto.setEventTitle(feedback.getEvent().getTitle());
+            dto.setEventTitle(feedback.getEvent().getTitle()); // An toàn vì có @EntityGraph
         }
         return dto;
     }

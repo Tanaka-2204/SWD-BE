@@ -190,6 +190,25 @@ public class EventController {
         return new ResponseEntity<>(feedbackResponse, HttpStatus.CREATED);
     }
 
+    @Operation(summary = "Get all feedback for an event")
+    @GetMapping("/{eventId}/feedback")
+    @PreAuthorize("isAuthenticated()")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<PageResponseDTO<FeedbackResponseDTO>> getEventFeedback(
+            @Parameter(description = "ID of the event") @PathVariable Long eventId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort,
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal) {
+        
+        // (Tùy chọn: Thêm logic kiểm tra xem Partner có sở hữu Event này không)
+        
+        Pageable pageable = createPageable(page, size, sort, "createdAt");
+        Page<FeedbackResponseDTO> feedbackPage = feedbackService.getAllFeedbackByEvent(eventId, pageable);
+        
+        return ResponseEntity.ok(new PageResponseDTO<>(feedbackPage));
+    }
+
     @Operation(summary = "Finalize event and payout rewards (by PARTNERS/Admin)")
     @PostMapping("/{eventId}/finalize")
     @PreAuthorize("hasRole('ADMIN') or hasRole('PARTNERS')")

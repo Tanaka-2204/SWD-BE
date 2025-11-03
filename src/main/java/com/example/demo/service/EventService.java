@@ -31,7 +31,7 @@ public interface EventService {
     Page<EventResponseDTO> getUpcomingEvents(Pageable pageable);
 
     Page<EventResponseDTO> searchEventsByTitle(String keyword, Pageable pageable);
-
+    
     Page<EventResponseDTO> getEventHistoryByStudent(Long studentId, Pageable pageable);
 
     // ==============================================================

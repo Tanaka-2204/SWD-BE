@@ -10,10 +10,12 @@ import com.example.demo.dto.response.UniversityResponseDTO;
 import com.example.demo.service.StudentService;
 import com.example.demo.service.UniversityService;
 import com.example.demo.dto.response.EventCategoryResponseDTO;
+import com.example.demo.dto.response.FeedbackResponseDTO;
 import com.example.demo.dto.response.PageResponseDTO;
 import com.example.demo.dto.response.PartnerResponseDTO;
 import com.example.demo.dto.response.WalletTransactionResponseDTO;
 import com.example.demo.service.EventCategoryService;
+import com.example.demo.service.FeedbackService;
 import com.example.demo.service.PartnerService;
 import com.example.demo.service.WalletService;
 import org.springframework.data.domain.Page;
@@ -44,16 +46,18 @@ public class AdminController {
     private final EventCategoryService eventCategoryService;
     private final StudentService studentService;
     private final UniversityService universityService;
+    private final FeedbackService feedbackService;
 
     public AdminController(PartnerService partnerService,
                            WalletService walletService,
                            EventCategoryService eventCategoryService,
-                           StudentService studentService, UniversityService universityService) {
+                           StudentService studentService, UniversityService universityService, FeedbackService feedbackService) {
         this.partnerService = partnerService;
         this.walletService = walletService;
         this.eventCategoryService = eventCategoryService;
         this.studentService = studentService;
         this.universityService = universityService;
+        this.feedbackService = feedbackService;
     }
 
     // ===================================
@@ -229,6 +233,21 @@ public class AdminController {
     public ResponseEntity<Void> deleteUniversity(@PathVariable Long id) {
         universityService.deleteUniversity(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Admin gets all feedback (system-wide)",
+               description = "Retrieves a paginated list of all feedback. Can be filtered by eventId.")
+    @GetMapping("/feedback")
+    public ResponseEntity<PageResponseDTO<FeedbackResponseDTO>> getAllSystemFeedback(
+            @RequestParam(required = false) Long eventId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+
+        Pageable pageable = createPageable(1, size, sort);
+        Page<FeedbackResponseDTO> feedbackPage = feedbackService.getAllFeedback(eventId, pageable);
+        
+        return ResponseEntity.ok(new PageResponseDTO<>(feedbackPage));
     }
 
     private Pageable createPageable(int page, int size, String sort) {

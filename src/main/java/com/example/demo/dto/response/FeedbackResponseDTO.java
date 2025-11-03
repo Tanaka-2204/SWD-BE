@@ -13,6 +13,8 @@ public class FeedbackResponseDTO {
 
     private Long studentId;
 
+    private String studentName;
+
     private Long eventId;
 
     private String eventTitle;
