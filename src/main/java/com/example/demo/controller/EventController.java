@@ -23,6 +23,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -66,6 +68,18 @@ public class EventController {
         Page<EventResponseDTO> eventPage = eventService.getAllEvents(spec, pageable);
         
         return ResponseEntity.ok(new PageResponseDTO<>(eventPage)); // Trả về DTO mới
+    }
+
+    @Operation(summary = "Get event details by ID", description = "Retrieves the details of a single event by its ID.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved event"),
+        @ApiResponse(responseCode = "404", description = "Event not found")
+    })
+    @GetMapping("/{id}")
+    public ResponseEntity<EventResponseDTO> getEventById(@PathVariable Long id) {
+        // (Giả sử EventService của bạn có hàm 'getEventDetailsById')
+        EventResponseDTO event = eventService.getEventById(id); 
+        return ResponseEntity.ok(event);
     }
 
     @Operation(summary = "Create a new event")

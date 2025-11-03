@@ -28,11 +28,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.demo.exception.ForbiddenException;
-import com.example.demo.exception.DataIntegrityViolationException; 
-import org.springframework.security.oauth2.jwt.Jwt;
+import com.example.demo.exception.DataIntegrityViolationException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.core.GrantedAuthority;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList; 
@@ -41,7 +39,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.stream.Collectors;
-import java.util.Collection;
 import java.util.Optional;
 
 @Service

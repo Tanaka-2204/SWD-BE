@@ -27,7 +27,6 @@ import org.springframework.data.domain.Page; // <<< THÊM
 import org.springframework.data.domain.PageRequest; // <<< THÊM
 import org.springframework.data.domain.Pageable; // <<< THÊM
 import org.springframework.data.domain.Sort;
-import io.swagger.v3.oas.annotations.Parameter;
 
 @RestController
 @RequestMapping("/api/v1/students")

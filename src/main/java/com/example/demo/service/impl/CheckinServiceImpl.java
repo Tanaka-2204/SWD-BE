@@ -8,7 +8,6 @@ import com.example.demo.entity.*;
 import com.example.demo.exception.*;
 import com.example.demo.repository.*;
 import com.example.demo.service.CheckinService;
-import com.example.demo.service.impl.StudentServiceImpl; 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
