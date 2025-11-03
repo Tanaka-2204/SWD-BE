@@ -27,17 +27,18 @@ import org.springframework.context.annotation.Configuration;
             url = "https://www.apache.org/licenses/LICENSE-2.0.html"
         )
     ),
+    // <<< SỬA ĐỔI TẠI ĐÂY: Thêm Render URL, xóa Ngrok
     servers = {
+        @Server(
+            url = "https://loyalty-system-be.onrender.com",
+            description = "Production Server (Render)"
+        ),
         @Server(
             url = "http://localhost:8080",
             description = "Local Development Server"
-        ),
-        @Server(
-            url = "https://brachycranic-noncorrelative-joya.ngrok-free.dev",
-            description = "Ngrok Public Tunnel"
         )
     }
-    // <<< TÔI ĐÃ XÓA "security = @SecurityRequirement(name = "bearerAuth")" KHỎI ĐÂY >>>
+    // <<< KẾT THÚC SỬA ĐỔI
 )
 @SecurityScheme(
     name = "bearerAuth", // Tên này vẫn giữ nguyên
