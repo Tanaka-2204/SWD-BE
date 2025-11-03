@@ -35,4 +35,6 @@ public interface WalletService {
     void deductBalance(String ownerType, Long ownerId, BigDecimal amount, String referenceType, Long referenceId);
 
     void refundBalance(String ownerType, Long ownerId, BigDecimal amount, String referenceType, Long referenceId);
+
+    Page<WalletTransactionResponseDTO> getAllTransactions(Pageable pageable);
 }

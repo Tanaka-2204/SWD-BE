@@ -24,6 +24,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductInvoiceServiceImpl implements ProductInvoiceService {
@@ -149,27 +150,38 @@ public class ProductInvoiceServiceImpl implements ProductInvoiceService {
         Sort sort = createSort(sortBy, order);
         Pageable pageable = PageRequest.of(offset / limit, limit, sort);
 
-        Page<ProductInvoice> invoices = productInvoiceRepository.findInvoicesByStudent(studentId, status, sortBy, pageable);
+        Page<ProductInvoice> invoices = productInvoiceRepository.findInvoicesByStudent(studentId, status, pageable);
         return invoices.map(this::convertToInvoiceDTO);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> getInvoiceStats() {
-        List<Object[]> results = productInvoiceRepository.getInvoiceStats();
-        if (results.isEmpty()) {
-            return Map.of(
-                    "totalRedeems", 0,
-                    "totalCoinsSpent", BigDecimal.ZERO,
-                    "topProducts", List.of()
-            );
+        List<Object[]> statsResults = productInvoiceRepository.getInvoiceStats();
+        List<Object[]> topProductsResults = productInvoiceRepository.getTopProducts();
+
+        Long totalRedeems = 0L;
+        BigDecimal totalCoinsSpent = BigDecimal.ZERO;
+
+        if (!statsResults.isEmpty()) {
+            Object[] stats = statsResults.get(0);
+            totalRedeems = ((Number) stats[0]).longValue();
+            totalCoinsSpent = (BigDecimal) stats[1];
         }
 
-        Object[] result = results.get(0);
+        List<Map<String, Object>> topProducts = topProductsResults.stream()
+                .map(row -> {
+                    Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("title", (String) row[0]);
+                    map.put("count", ((Number) row[1]).longValue());
+                    return map;
+                })
+                .collect(Collectors.toList());
+
         return Map.of(
-                "totalRedeems", result[0],
-                "totalCoinsSpent", result[1],
-                "topProducts", result[2]
+                "totalRedeems", totalRedeems,
+                "totalCoinsSpent", totalCoinsSpent,
+                "topProducts", topProducts
         );
     }
 

@@ -10,7 +10,6 @@ import com.example.demo.service.WalletService;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -346,5 +345,12 @@ public class WalletServiceImpl implements WalletService {
             dto.setCounterpartyId(transaction.getCounterparty().getId());
         }
         return dto;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WalletTransactionResponseDTO> getAllTransactions(Pageable pageable) {
+        Page<WalletTransaction> transactions = transactionRepository.findAllByOrderByCreatedAtDesc(pageable);
+        return transactions.map(this::convertToTransactionDTO);
     }
 }
