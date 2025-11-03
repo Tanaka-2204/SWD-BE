@@ -58,7 +58,7 @@ public class EventController {
     @GetMapping
     public ResponseEntity<PageResponseDTO<EventResponseDTO>> getAllEvents(
             @RequestParam(required = false) Long categoryId,
-            @RequestParam(required = false, defaultValue = "ACTIVE") String status, // Mặc định ACTIVE
+            @RequestParam(required = false) String status, // Mặc định ACTIVE
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt,desc") String sort) {
