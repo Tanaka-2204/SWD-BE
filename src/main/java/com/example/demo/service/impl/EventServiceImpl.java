@@ -95,7 +95,7 @@ public class EventServiceImpl implements EventService {
         // Ví này sẽ được tự động lưu khi lưu Event (nhờ CascadeType.ALL)
         Wallet eventWallet = new Wallet();
         eventWallet.setBalance(totalBudgetCoin); // <<< NẠP SẴN TIỀN
-        eventWallet.setCurrency("VND");
+        eventWallet.setCurrency("COIN");
         eventWallet.setOwnerType("EVENT");
         // (OwnerId sẽ được cập nhật sau khi Event có ID)
         

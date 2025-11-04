@@ -18,18 +18,22 @@ import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProviderClientBuilder;
-import com.amazonaws.services.cognitoidp.model.AdminAddUserToGroupRequest; 
+import com.amazonaws.services.cognitoidp.model.AdminAddUserToGroupRequest;
 import com.amazonaws.services.cognitoidp.model.AdminCreateUserRequest;
 import com.amazonaws.services.cognitoidp.model.AdminCreateUserResult;
+import com.amazonaws.services.cognitoidp.model.AdminGetUserRequest;
+import com.amazonaws.services.cognitoidp.model.AdminGetUserResult;
 import com.amazonaws.services.cognitoidp.model.AliasExistsException;
 import com.amazonaws.services.cognitoidp.model.AttributeType;
 import com.amazonaws.services.cognitoidp.model.DeliveryMediumType;
 import com.amazonaws.services.cognitoidp.model.UsernameExistsException;
 import com.example.demo.exception.BadRequestException;
 import com.amazonaws.services.cognitoidp.model.InvalidParameterException;
-import org.slf4j.Logger; 
-import org.slf4j.LoggerFactory; 
-import org.springframework.beans.factory.annotation.Value; 
+import com.amazonaws.services.cognitoidp.model.UserNotFoundException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import java.math.BigDecimal;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -49,8 +53,8 @@ public class PartnerServiceImpl implements PartnerService {
     // <<< GIỮ LẠI CONSTRUCTOR NÀY (Đã sửa lỗi) >>>
     public PartnerServiceImpl(PartnerRepository partnerRepository,
             WalletRepository walletRepository,
-            @Value("${AWS_ACCESS_KEY_ID}") String accessKey, 
-            @Value("${AWS_SECRET_ACCESS_KEY}") String secretKey, 
+            @Value("${AWS_ACCESS_KEY_ID}") String accessKey,
+            @Value("${AWS_SECRET_ACCESS_KEY}") String secretKey,
             @Value("${AWS_REGION}") String awsRegion) {
         this.partnerRepository = partnerRepository;
         this.walletRepository = walletRepository;
@@ -70,7 +74,7 @@ public class PartnerServiceImpl implements PartnerService {
     @Transactional
     public PartnerResponseDTO createPartner(PartnerRequestDTO requestDTO) {
         // ===>>> LẤY USERNAME TỪ DTO <<<===
-        String partnerCognitoUsername = requestDTO.getUsername(); 
+        String partnerCognitoUsername = requestDTO.getUsername();
         String partnerEmail = requestDTO.getContactEmail();
         logger.info("Attempting to create partner and Cognito user with username: {}", partnerCognitoUsername);
 
@@ -84,73 +88,112 @@ public class PartnerServiceImpl implements PartnerService {
         // == BƯỚC 2: TẠO USER MỚI TRÊN COGNITO ==
         // ================================================
         String createdCognitoSub = null;
+        AdminAddUserToGroupRequest addUserToGroupRequest = new AdminAddUserToGroupRequest()
+                .withUserPoolId(userPoolId)
+                .withUsername(partnerCognitoUsername)
+                .withGroupName("PARTNERS");
         try {
             AdminCreateUserRequest createUserRequest = new AdminCreateUserRequest()
                     .withUserPoolId(userPoolId)
-                    // ===>>> SỬ DỤNG USERNAME TỪ DTO <<<===
-                    .withUsername(partnerCognitoUsername) 
+                    .withUsername(partnerCognitoUsername)
                     .withUserAttributes(
                             new AttributeType().withName("email").withValue(partnerEmail),
                             new AttributeType().withName("name").withValue(requestDTO.getName()),
                             new AttributeType().withName("email_verified").withValue("true"),
-                            // ===>>> THÊM CUSTOM ATTRIBUTE <<<===
-                            new AttributeType().withName("custom:user_type").withValue("PARTNER") 
-                    )
+                            new AttributeType().withName("custom:user_type").withValue("PARTNERS"))
                     .withDesiredDeliveryMediums(DeliveryMediumType.EMAIL)
                     .withForceAliasCreation(Boolean.FALSE);
 
             AdminCreateUserResult createUserResult = cognitoClient.adminCreateUser(createUserRequest);
+
+            // Lấy Sub ID của user MỚI TẠO
             createdCognitoSub = createUserResult.getUser().getAttributes().stream()
-                                        .filter(attr -> "sub".equals(attr.getName()))
-                                        .map(AttributeType::getValue)
-                                        .findFirst().orElse(null);
-            logger.info("Successfully created Cognito user: {} with sub: {}", partnerCognitoUsername, createdCognitoSub);
+                    .filter(attr -> "sub".equals(attr.getName()))
+                    .map(AttributeType::getValue)
+                    .findFirst().orElseThrow(() -> new RuntimeException("Cognito user created but 'sub' not found."));
 
-            // Thêm user vào group PARTNERS (vẫn dùng username từ DTO)
-            AdminAddUserToGroupRequest addUserToGroupRequest = new AdminAddUserToGroupRequest()
-                    .withUserPoolId(userPoolId)
-                    .withUsername(partnerCognitoUsername) // Dùng username từ DTO
-                    .withGroupName("PARTNERS");
+            logger.info("Successfully created Cognito user: {} with sub: {}", partnerCognitoUsername,
+                    createdCognitoSub);
 
+            // Thêm user MỚI TẠO vào group
             cognitoClient.adminAddUserToGroup(addUserToGroupRequest);
-            logger.info("Successfully added Cognito user {} to group PARTNERS", partnerCognitoUsername);
+            logger.info("Successfully added new Cognito user {} to group PARTNERS", partnerCognitoUsername);
 
         } catch (UsernameExistsException e) {
-             logger.warn("Cognito username {} already exists. Attempting to add to group PARTNERS.", partnerCognitoUsername);
-             // Xử lý logic add group cho user đã tồn tại (giữ nguyên)
-             try {
-                 AdminAddUserToGroupRequest addUserToGroupRequest = new AdminAddUserToGroupRequest()
-                         .withUserPoolId(userPoolId)
-                         .withUsername(partnerCognitoUsername)
-                         .withGroupName("PARTNERS");
-                 cognitoClient.adminAddUserToGroup(addUserToGroupRequest);
-                 logger.info("Successfully added existing Cognito user {} to group PARTNERS", partnerCognitoUsername);
-             } catch (Exception addGroupError) {
-                  logger.error("Failed to add existing Cognito user {} to group PARTNERS: {}", partnerCognitoUsername, addGroupError.getMessage());
-                  throw new RuntimeException("Failed to assign partner role in Cognito for existing user.", addGroupError);
-             }
+            // === USER ĐÃ TỒN TẠI ===
+            logger.warn("Cognito username {} already exists. Getting user SUB and adding to group.",
+                    partnerCognitoUsername);
+
+            try {
+                // BƯỚC 1: LẤY THÔNG TIN USER ĐÃ TỒN TẠI
+                AdminGetUserRequest getUserRequest = new AdminGetUserRequest()
+                        .withUserPoolId(userPoolId)
+                        .withUsername(partnerCognitoUsername);
+
+                AdminGetUserResult getUserResult = cognitoClient.adminGetUser(getUserRequest);
+
+                // Lấy Sub ID của user ĐÃ TỒN TẠI
+                createdCognitoSub = getUserResult.getUserAttributes().stream()
+                        .filter(attr -> "sub".equals(attr.getName()))
+                        .map(AttributeType::getValue)
+                        .findFirst()
+                        .orElseThrow(() -> new RuntimeException("Cognito user exists but 'sub' not found."));
+
+                // BƯỚC 2: THÊM USER ĐÃ TỒN TẠI VÀO GROUP
+                cognitoClient.adminAddUserToGroup(addUserToGroupRequest);
+                logger.info("Successfully added existing Cognito user {} to group PARTNERS", partnerCognitoUsername);
+
+            } catch (UserNotFoundException notFoundE) {
+                // Mâu thuẫn logic: "Exists" xong lại "Not Found"
+                // Log này (10:01:57) của bạn đã xảy ra ở đây.
+                logger.error("Cognito logic error: User {} reported 'Exists' but then 'Not Found'. {}",
+                        partnerCognitoUsername, notFoundE.getMessage());
+                throw new RuntimeException("Cognito state contradiction. Please check user status.", notFoundE);
+
+            } catch (Exception addGroupError) {
+                // Lỗi khi thêm vào group (ví dụ: user đã ở trong group)
+                logger.error("Failed to add existing Cognito user {} to group PARTNERS: {}", partnerCognitoUsername,
+                        addGroupError.getMessage());
+                // (Có thể bỏ qua lỗi này nếu user đã ở trong group, nhưng để an toàn, chúng ta
+                // ném lỗi)
+                throw new RuntimeException("Failed to assign partner role in Cognito for existing user.",
+                        addGroupError);
+            }
+
         } catch (AliasExistsException e) {
-             logger.error("Cognito user with email alias {} already exists.", partnerEmail, e);
-             throw new DataIntegrityViolationException("Partner email already exists in Cognito.", e);
+            logger.error("Cognito user with email alias {} already exists.", partnerEmail, e);
+            throw new DataIntegrityViolationException("Partner email already exists in Cognito.", e);
+
         } catch (InvalidParameterException e) {
-             logger.error("Invalid parameter creating Cognito user {}: {}", partnerCognitoUsername, e.getMessage());
-             throw new BadRequestException("Invalid username or attributes for Cognito: " + e.getMessage(), e); 
+            // Lỗi này xảy ra nếu username/password không hợp lệ
+            logger.error("Invalid parameter creating Cognito user {}: {}", partnerCognitoUsername, e.getMessage());
+            throw new BadRequestException(
+                    "Invalid username or attributes for Cognito (e.g., password policy): " + e.getMessage(), e);
+
+        } catch (Exception e) {
+            // Bắt các lỗi khác
+            logger.error("Failed to create Cognito user {} or add to group: {}", partnerCognitoUsername, e.getMessage(),
+                    e);
+            throw new RuntimeException("Failed to create Cognito user or assign role. Partner creation rolled back.",
+                    e);
         }
-        catch (Exception e) {
-            logger.error("Failed to create Cognito user {} or add to group: {}", partnerCognitoUsername, e.getMessage(), e);
-            throw new RuntimeException("Failed to create Cognito user or assign role. Partner creation rolled back.", e);
+
+        // Đảm bảo createdCognitoSub KHÔNG BAO GIỜ null ở đây
+        if (createdCognitoSub == null) {
+            logger.error("CRITICAL: createdCognitoSub is null after try-catch blocks. Rolling back.");
+            throw new RuntimeException("Failed to retrieve Cognito SUB ID for user " + partnerCognitoUsername);
         }
+
         // ================================================
 
-        // 3. Tạo Wallet và Partner trong Database
+        // 3. Tạo Wallet và Partner trong Database (Giữ nguyên)
         Partner partner = new Partner();
         partner.setName(requestDTO.getName());
         partner.setOrganizationType(requestDTO.getOrganizationType());
         partner.setContactEmail(requestDTO.getContactEmail());
         partner.setContactPhone(requestDTO.getContactPhone());
-        partner.setCognitoSub(createdCognitoSub); // Lưu sub ID
+        partner.setCognitoSub(createdCognitoSub); // <<< SẼ LUÔN CÓ GIÁ TRỊ
 
-        // ... (Code tạo Wallet, lưu Partner, cập nhật Wallet Owner ID giữ nguyên) ...
         Wallet wallet = new Wallet();
         wallet.setOwnerType("PARTNER");
         wallet.setCurrency("COIN");
@@ -163,7 +206,8 @@ public class PartnerServiceImpl implements PartnerService {
         savedWallet.setOwnerId(savedPartner.getId());
         walletRepository.save(savedWallet);
 
-        logger.info("Successfully created partner {} with ID {} in database", savedPartner.getName(), savedPartner.getId());
+        logger.info("Successfully created partner {} with ID {} in database", savedPartner.getName(),
+                savedPartner.getId());
         return convertToDTO(savedPartner);
     }
 
@@ -188,7 +232,7 @@ public class PartnerServiceImpl implements PartnerService {
     @Transactional(readOnly = true)
     public Page<PartnerResponseDTO> getAllPartners(Pageable pageable) {
         return partnerRepository.findAll(pageable)
-                                .map(this::convertToDTO);
+                .map(this::convertToDTO);
     }
 
     @Override

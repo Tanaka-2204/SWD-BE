@@ -15,15 +15,6 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
     // (Hàm này bạn đã sửa ở bước trước, tải luôn Event/Student)
     @EntityGraph(attributePaths = {"student", "event"})
     Optional<Feedback> findByStudentIdAndEventId(Long studentId, Long eventId);
-    
-    // (Ghi đè hàm findById)
-    @Override
-    @EntityGraph(attributePaths = {"student", "event"})
-    Optional<Feedback> findById(Long id);
-
-    // ==========================================================
-    // <<< THÊM 2 HÀM MỚI CHO API GET
-    // ==========================================================
 
     /**
      * (API 1) Lấy feedback theo Event ID (đã phân trang)
