@@ -37,7 +37,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/events")
-@Tag(name = "2. Events & Registration")
+@Tag(name = "3. Events & Registration")
 public class EventController {
 
     private final EventService eventService;

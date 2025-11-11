@@ -20,7 +20,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/products")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "3. Store & Redemption")
+@Tag(name = "4. Store & Redemption")
 public class ProductController {
 
     private final ProductService productService;

@@ -39,7 +39,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/admin")
-@Tag(name = "6. Admin Management")
+@Tag(name = "2. Admin Management")
 @SecurityRequirement(name = "bearerAuth")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {

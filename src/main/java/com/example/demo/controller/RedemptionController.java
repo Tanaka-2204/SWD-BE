@@ -5,6 +5,7 @@ import com.example.demo.dto.response.ProductInvoiceResponseDTO;
 import com.example.demo.dto.response.WalletResponseDTO;
 import com.example.demo.service.RedemptionService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/redemptions")
+@Tag(name = "4. Store & Redemption")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
 public class RedemptionController {

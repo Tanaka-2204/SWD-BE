@@ -19,7 +19,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1") // Tiền tố chung
-@Tag(name = "3. Partner Actions") // Gắn tag Swagger cho rõ ràng
+@Tag(name = "3. Events & Registration") // Gắn tag Swagger cho rõ ràng
 public class EventFundingController {
 
     private final EventFundingService eventFundingService;

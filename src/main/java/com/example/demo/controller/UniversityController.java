@@ -15,7 +15,7 @@ import org.springframework.data.domain.Sort;
 
 @RestController
 @RequestMapping("/api/v1/universities")
-@Tag(name = "7. Public Data") // <<< Gắn Tag Swagger
+@Tag(name = "6. Public Data") // <<< Gắn Tag Swagger
 public class UniversityController {
 
     private final UniversityService universityService;

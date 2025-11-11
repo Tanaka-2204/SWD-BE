@@ -35,7 +35,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/partners")
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "5. Partner Management")
+@Tag(name = "3. Partner Management")
 public class PartnerController {
 
     private final PartnerService partnerService;
