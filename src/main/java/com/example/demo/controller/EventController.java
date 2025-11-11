@@ -23,6 +23,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -31,10 +33,11 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/events")
-@Tag(name = "2. Events & Registration")
+@Tag(name = "3. Events & Registration")
 public class EventController {
 
     private final EventService eventService;
@@ -55,8 +58,8 @@ public class EventController {
     @Operation(summary = "Get all events with optional filters")
     @GetMapping
     public ResponseEntity<PageResponseDTO<EventResponseDTO>> getAllEvents(
-            @RequestParam(required = false) Long categoryId,
-            @RequestParam(required = false, defaultValue = "ACTIVE") String status, // Mặc định ACTIVE
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) String status, // Mặc định ACTIVE
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt,desc") String sort) {
@@ -66,6 +69,18 @@ public class EventController {
         Page<EventResponseDTO> eventPage = eventService.getAllEvents(spec, pageable);
         
         return ResponseEntity.ok(new PageResponseDTO<>(eventPage)); // Trả về DTO mới
+    }
+
+    @Operation(summary = "Get event details by ID", description = "Retrieves the details of a single event by its ID.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved event"),
+        @ApiResponse(responseCode = "404", description = "Event not found")
+    })
+    @GetMapping("/{id}")
+    public ResponseEntity<EventResponseDTO> getEventById(@PathVariable UUID id) {
+        // (Giả sử EventService của bạn có hàm 'getEventDetailsById')
+        EventResponseDTO event = eventService.getEventById(id); 
+        return ResponseEntity.ok(event);
     }
 
     @Operation(summary = "Create a new event")
@@ -87,7 +102,7 @@ public class EventController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('PARTNERS')") // <<< SỬA: Thêm PreAuthorize
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<EventResponseDTO> updateEvent(
-            @Parameter(description = "ID of the event to update") @PathVariable Long id,
+            @Parameter(description = "ID of the event to update") @PathVariable UUID id,
             @Valid @RequestBody EventUpdateDTO requestDTO,
             @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal) { // <<< SỬA: Thêm Principal
 
@@ -101,7 +116,7 @@ public class EventController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('PARTNERS')") // <<< SỬA: Thêm PreAuthorize
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Void> deleteEvent(
-            @Parameter(description = "ID of the event to delete") @PathVariable Long id,
+            @Parameter(description = "ID of the event to delete") @PathVariable UUID id,
             @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal) { // <<< SỬA: Thêm Principal
 
         // Gọi service đã cập nhật
@@ -116,7 +131,7 @@ public class EventController {
     @PreAuthorize("isAuthenticated()")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<CheckinResponseDTO> registerEvent(
-            @PathVariable Long eventId,
+            @PathVariable UUID eventId,
             @AuthenticationPrincipal AuthPrincipal principal) {
 
         String cognitoSub = principal.getCognitoSub();
@@ -129,7 +144,7 @@ public class EventController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('PARTNERS')") // <<< SỬA: Đổi PreAuthorize
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<CheckinResponseDTO> checkInStudent(
-            @PathVariable Long eventId,
+            @PathVariable UUID eventId,
             @Valid @RequestBody CheckinRequestDTO requestDTO,
             @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal) { // <<< SỬA: Thêm Principal
 
@@ -143,18 +158,14 @@ public class EventController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('PARTNERS')")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<PageResponseDTO<StudentResponseDTO>> getEventAttendees(
-            @PathVariable Long eventId,
-            // --- YÊU CẦU ĐƠN GIẢN TỪ FE ---
+            @PathVariable UUID eventId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "student.fullName,asc") String sort) {
 
-        // --- BACKEND TỰ XỬ LÝ LOGIC PHỨC TẠP ---
         Pageable pageable = createPageable(page, size, sort, "student.fullName");
         
         Page<StudentResponseDTO> attendees = checkinService.getAttendeesByEvent(eventId, pageable);
-        
-        // --- TRẢ VỀ RESPONSE ĐƠN GIẢN ---
         return ResponseEntity.ok(new PageResponseDTO<>(attendees));
     }
 
@@ -164,16 +175,33 @@ public class EventController {
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<FeedbackResponseDTO> submitFeedback(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal,
-            @Parameter(description = "ID of the event") @PathVariable Long eventId,
+            @Parameter(description = "ID of the event") @PathVariable UUID eventId,
             @Valid @RequestBody FeedbackRequestDTO requestDTO) {
 
         if (principal.getStudentId() == null) {
             throw new ForbiddenException(
                     "Student profile is not completed. Please call /api/students/complete-profile first.");
         }
-        Long studentId = principal.getStudentId();
+        UUID studentId = principal.getStudentId();
         FeedbackResponseDTO feedbackResponse = feedbackService.createFeedback(studentId, eventId, requestDTO);
         return new ResponseEntity<>(feedbackResponse, HttpStatus.CREATED);
+    }
+
+    @Operation(summary = "Get all feedback for an event")
+    @GetMapping("/{eventId}/feedback")
+    @PreAuthorize("isAuthenticated()")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<PageResponseDTO<FeedbackResponseDTO>> getEventFeedback(
+            @Parameter(description = "ID of the event") @PathVariable UUID eventId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort,
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal) {
+        
+        Pageable pageable = createPageable(page, size, sort, "createdAt");
+        Page<FeedbackResponseDTO> feedbackPage = feedbackService.getAllFeedbackByEvent(eventId, pageable);
+        
+        return ResponseEntity.ok(new PageResponseDTO<>(feedbackPage));
     }
 
     @Operation(summary = "Finalize event and payout rewards (by PARTNERS/Admin)")
@@ -181,8 +209,8 @@ public class EventController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('PARTNERS')")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<EventResponseDTO> finalizeEvent(
-            @Parameter(description = "ID of the event to finalize") @PathVariable Long eventId,
-            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal) { // <<< SỬA: Thêm Principal
+            @Parameter(description = "ID of the event to finalize") @PathVariable UUID eventId,
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal) { 
 
         // Gọi service đã cập nhật
         EventResponseDTO finalizedEvent = eventService.finalizeEvent(eventId, principal);

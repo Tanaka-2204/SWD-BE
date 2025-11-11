@@ -5,17 +5,13 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Data
-public class EventBroadcastResponseDTO {
-
-    private UUID id;
-
-    private UUID eventId;
-
-    private String eventTitle;
-
+public class StudentBroadcastResponseDTO {
+    
+    private UUID deliveryId; 
+    
     private String messageContent;
-
     private OffsetDateTime sentAt;
-
-    //private UUID recipientCount; 
+    private String status; // UNREAD | READ
+    private UUID eventId;
+    private String eventTitle;
 }

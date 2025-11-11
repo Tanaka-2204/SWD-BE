@@ -10,10 +10,14 @@ import com.example.demo.dto.response.UniversityResponseDTO;
 import com.example.demo.service.StudentService;
 import com.example.demo.service.UniversityService;
 import com.example.demo.dto.response.EventCategoryResponseDTO;
+import com.example.demo.dto.response.FeedbackResponseDTO;
 import com.example.demo.dto.response.PageResponseDTO;
+import com.example.demo.dto.response.EventResponseDTO;
 import com.example.demo.dto.response.PartnerResponseDTO;
 import com.example.demo.dto.response.WalletTransactionResponseDTO;
 import com.example.demo.service.EventCategoryService;
+import com.example.demo.service.EventService;
+import com.example.demo.service.FeedbackService;
 import com.example.demo.service.PartnerService;
 import com.example.demo.service.WalletService;
 import org.springframework.data.domain.Page;
@@ -27,16 +31,15 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/v1/admin")
-@Tag(name = "6. Admin Management")
+@Tag(name = "2. Admin Management")
 @SecurityRequirement(name = "bearerAuth")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
@@ -44,18 +47,23 @@ public class AdminController {
     private final PartnerService partnerService;
     private final WalletService walletService;
     private final EventCategoryService eventCategoryService;
+    private final EventService eventService;
     private final StudentService studentService;
     private final UniversityService universityService;
+    private final FeedbackService feedbackService;
 
     public AdminController(PartnerService partnerService,
                            WalletService walletService,
                            EventCategoryService eventCategoryService,
-                           StudentService studentService, UniversityService universityService) {
+                           EventService eventService,
+                           StudentService studentService, UniversityService universityService, FeedbackService feedbackService) {
         this.partnerService = partnerService;
         this.walletService = walletService;
         this.eventCategoryService = eventCategoryService;
+        this.eventService = eventService;
         this.studentService = studentService;
         this.universityService = universityService;
+        this.feedbackService = feedbackService;
     }
 
     // ===================================
@@ -136,7 +144,7 @@ public class AdminController {
     })
     @PutMapping("/event-categories/{id}")
     public ResponseEntity<EventCategoryResponseDTO> updateCategory(
-            @Parameter(description = "ID of the category to update") @PathVariable Long id,
+            @Parameter(description = "ID of the category to update") @PathVariable UUID id,
             @Valid @RequestBody EventCategoryRequestDTO requestDTO) {
         return ResponseEntity.ok(eventCategoryService.updateCategory(id, requestDTO));
     }
@@ -148,7 +156,7 @@ public class AdminController {
     })
     @DeleteMapping("/event-categories/{id}")
     public ResponseEntity<Void> deleteCategory(
-            @Parameter(description = "ID of the category to delete") @PathVariable Long id) {
+            @Parameter(description = "ID of the category to delete") @PathVariable UUID id) {
         eventCategoryService.deleteCategory(id);
         return ResponseEntity.noContent().build();
     }
@@ -184,7 +192,7 @@ public class AdminController {
     })
     @PatchMapping("/students/{id}/status") // <<< API MỚI
     public ResponseEntity<StudentResponseDTO> updateStudentStatus(
-            @Parameter(description = "ID of the student to update") @PathVariable Long id,
+            @Parameter(description = "ID of the student to update") @PathVariable UUID id,
             @Valid @RequestBody UserStatusUpdateDTO statusDTO) {
         
         StudentResponseDTO updatedStudent = studentService.updateStudentStatus(id, statusDTO);
@@ -199,7 +207,7 @@ public class AdminController {
     })
     @PatchMapping("/partners/{id}/status") // <<< API MỚI
     public ResponseEntity<PartnerResponseDTO> updatePartnerStatus(
-            @Parameter(description = "ID of the partner to update") @PathVariable Long id,
+            @Parameter(description = "ID of the partner to update") @PathVariable UUID id,
             @Valid @RequestBody UserStatusUpdateDTO statusDTO) {
         
         PartnerResponseDTO updatedPartner = partnerService.updatePartnerStatus(id, statusDTO);
@@ -219,7 +227,7 @@ public class AdminController {
     @ApiResponse(responseCode = "200", description = "University updated successfully")
     @PutMapping("/universities/{id}") // <<< API MỚI
     public ResponseEntity<UniversityResponseDTO> updateUniversity(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody UniversityRequestDTO dto) {
         UniversityResponseDTO updatedUniversity = universityService.updateUniversity(id, dto);
         return ResponseEntity.ok(updatedUniversity);
@@ -228,9 +236,44 @@ public class AdminController {
     @Operation(summary = "Admin deletes a university", description = "ADMIN only. Fails if any student is linked.")
     @ApiResponse(responseCode = "204", description = "University deleted successfully")
     @DeleteMapping("/universities/{id}") // <<< API MỚI
-    public ResponseEntity<Void> deleteUniversity(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteUniversity(@PathVariable UUID id) {
         universityService.deleteUniversity(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Admin gets all feedback (system-wide)",
+               description = "Retrieves a paginated list of all feedback. Can be filtered by eventId.")
+    @GetMapping("/feedback")
+    public ResponseEntity<PageResponseDTO<FeedbackResponseDTO>> getAllSystemFeedback(
+            @RequestParam(required = false) UUID eventId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+
+        Pageable pageable = createPageable(1, size, sort);
+        Page<FeedbackResponseDTO> feedbackPage = feedbackService.getAllFeedback(eventId, pageable);
+        
+        return ResponseEntity.ok(new PageResponseDTO<>(feedbackPage));
+    }
+
+    @Operation(summary = "Admin gets all wallet transactions", description = "Retrieves a paginated list of all wallet transactions in the system.")
+    @ApiResponse(responseCode = "200", description = "Successfully retrieved transactions")
+    @GetMapping("/wallets/transactions")
+    public ResponseEntity<Page<WalletTransactionResponseDTO>> getAllTransactions(Pageable pageable) {
+        Page<WalletTransactionResponseDTO> transactions = walletService.getAllTransactions(pageable);
+        return ResponseEntity.ok(transactions);
+    }
+
+    @Operation(summary = "Admin approves a pending event", description = "Changes event status from PENDING to APPROVED.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Event approved successfully"),
+        @ApiResponse(responseCode = "404", description = "Event not found"),
+        @ApiResponse(responseCode = "409", description = "Event is not in PENDING status")
+    })
+    @PatchMapping("/events/{id}/approve")
+    public ResponseEntity<EventResponseDTO> approveEvent(@PathVariable UUID id) {
+        EventResponseDTO approvedEvent = eventService.approveEvent(id);
+        return ResponseEntity.ok(approvedEvent);
     }
 
     private Pageable createPageable(int page, int size, String sort) {

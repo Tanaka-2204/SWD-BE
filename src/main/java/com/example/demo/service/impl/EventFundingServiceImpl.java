@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.UUID; // <<< THÊM IMPORT
 
 @Service
 public class EventFundingServiceImpl implements EventFundingService {
@@ -32,7 +33,7 @@ public class EventFundingServiceImpl implements EventFundingService {
 
     @Override
     @Transactional
-    public EventFundingResponseDTO fundEvent(Long partnerId, EventFundingRequestDTO requestDTO) {
+    public EventFundingResponseDTO fundEvent(UUID partnerId, EventFundingRequestDTO requestDTO) { // SỬA: Long -> UUID
         BigDecimal amount = requestDTO.getAmount();
 
         // 1. Lấy Partner và Ví của họ
@@ -91,7 +92,7 @@ public class EventFundingServiceImpl implements EventFundingService {
         
         // 5.5. Lưu các thay đổi
         walletRepository.save(partnerWallet);
-        walletRepository.save(eventWallet); // <<< SỬA ĐỔI: Lưu ví event
+        walletRepository.save(eventWallet); 
         eventRepository.save(event); 
 
         // 6. Ghi lại lịch sử cấp vốn (Giữ nguyên)
@@ -106,9 +107,9 @@ public class EventFundingServiceImpl implements EventFundingService {
         // 7.1. Giao dịch cho Partner (Trừ tiền)
         WalletTransaction partnerTx = new WalletTransaction();
         partnerTx.setWallet(partnerWallet);
-        partnerTx.setCounterparty(eventWallet); // <<< Đối tác là Ví Event
-        partnerTx.setTxnType("FUND_EVENT"); // (Partner chi tiền)
-        partnerTx.setAmount(amount.negate()); // Ghi âm
+        partnerTx.setCounterparty(eventWallet); 
+        partnerTx.setTxnType("FUND_EVENT"); 
+        partnerTx.setAmount(amount.negate()); 
         partnerTx.setReferenceType("EVENT_FUNDING");
         partnerTx.setReferenceId(savedFunding.getId());
         transactionRepository.save(partnerTx);
@@ -116,9 +117,9 @@ public class EventFundingServiceImpl implements EventFundingService {
         // 7.2. Giao dịch cho Event (Nhận tiền)
         WalletTransaction eventTx = new WalletTransaction();
         eventTx.setWallet(eventWallet);
-        eventTx.setCounterparty(partnerWallet); // <<< Đối tác là Ví Partner
-        eventTx.setTxnType("RECEIVE_FUNDING"); // (Event nhận tiền)
-        eventTx.setAmount(amount); // Ghi dương
+        eventTx.setCounterparty(partnerWallet); 
+        eventTx.setTxnType("RECEIVE_FUNDING"); 
+        eventTx.setAmount(amount); 
         eventTx.setReferenceType("EVENT_FUNDING");
         eventTx.setReferenceId(savedFunding.getId());
         transactionRepository.save(eventTx);

@@ -30,11 +30,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/partners")
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "5. Partner Management")
+@Tag(name = "3. Partner Management")
 public class PartnerController {
 
     private final PartnerService partnerService;
@@ -60,7 +61,7 @@ public class PartnerController {
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('PARTNERS')")
     public ResponseEntity<PartnerResponseDTO> getPartnerById(
-            @Parameter(description = "ID of the partner to retrieve") @PathVariable Long id) {
+            @Parameter(description = "ID of the partner to retrieve") @PathVariable UUID id) {
         return ResponseEntity.ok(partnerService.getPartnerById(id));
     }
 
@@ -90,7 +91,7 @@ public class PartnerController {
     @GetMapping("/{partnerId}/wallet")
     @PreAuthorize("hasRole('PARTNERS')")
     public ResponseEntity<WalletResponseDTO> getPartnerWallet(
-            @Parameter(description = "ID of the partner") @PathVariable Long partnerId) {
+            @Parameter(description = "ID of the partner") @PathVariable UUID partnerId) {
         // Dùng lại phương thức đã tạo trong WalletService
         WalletResponseDTO wallet = walletService.getWalletByOwner("PARTNER", partnerId);
         return ResponseEntity.ok(wallet);
@@ -124,7 +125,7 @@ public class PartnerController {
     @PostMapping("/{partnerId}/fund-event")
     @PreAuthorize("hasRole('PARTNERS')")
     public ResponseEntity<EventFundingResponseDTO> fundEvent(
-            @Parameter(description = "ID of the partner") @PathVariable Long partnerId,
+            @Parameter(description = "ID of the partner") @PathVariable UUID partnerId,
             @Valid @RequestBody EventFundingRequestDTO requestDTO) {
         EventFundingResponseDTO fundingResponse = eventFundingService.fundEvent(partnerId, requestDTO);
         return ResponseEntity.ok(fundingResponse);
@@ -139,7 +140,7 @@ public class PartnerController {
     @PostMapping("/{partnerId}/broadcast")
     @PreAuthorize("hasRole('PARTNERS')")
     public ResponseEntity<EventBroadcastResponseDTO> sendBroadcast(
-            @Parameter(description = "ID of the partner sending") @PathVariable Long partnerId,
+            @Parameter(description = "ID of the partner sending") @PathVariable UUID partnerId,
             @Valid @RequestBody BroadcastRequestDTO requestDTO) {
 
         EventBroadcastResponseDTO broadcastResponse = broadcastService.sendBroadcast(partnerId, requestDTO);
@@ -156,7 +157,7 @@ public class PartnerController {
                                         : Sort.Direction.ASC;
             return PageRequest.of(pageIndex, size, Sort.by(direction, sortField));
         } catch (Exception e) {
-            return PageRequest.of(pageIndex, size, Sort.by(Sort.Direction.DESC, "createdAt")); // Mặc định
+            return PageRequest.of(pageIndex, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         }
     }
 }

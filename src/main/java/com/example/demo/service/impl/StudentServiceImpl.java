@@ -30,6 +30,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class StudentServiceImpl implements StudentService {
@@ -70,7 +71,7 @@ public class StudentServiceImpl implements StudentService {
 
     @Override
     @Transactional(readOnly = true)
-    public StudentResponseDTO getStudentById(Long studentId) {
+    public StudentResponseDTO getStudentById(UUID studentId) {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + studentId));
         return toResponseDTO(student);
@@ -203,7 +204,7 @@ public class StudentServiceImpl implements StudentService {
 
     @Override
     @Transactional
-    public StudentResponseDTO updateStudentStatus(Long studentId, UserStatusUpdateDTO dto) {
+    public StudentResponseDTO updateStudentStatus(UUID studentId, UserStatusUpdateDTO dto) {
         logger.info("Admin updating status for studentId: {} to {}", studentId, dto.getStatus());
 
         Student student = studentRepository.findById(studentId)

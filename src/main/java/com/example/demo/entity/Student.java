@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-
+import java.util.UUID;
 import java.time.OffsetDateTime;
 
 @Getter
@@ -18,9 +18,9 @@ import java.time.OffsetDateTime;
 public class Student {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "student_id", nullable = false)
-    private Long id;
+    private UUID id;
 
     @Column(name = "cognito_sub", unique = true, nullable = false, updatable = false)
     private String cognitoSub;

@@ -1,15 +1,16 @@
 package com.example.demo.dto.response;
 
 import lombok.Data;
+import java.util.UUID;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 @Data
 public class ProductInvoiceResponseDTO {
-    private Long invoiceId;
-    private Long studentId;
+    private UUID invoiceId;
+    private UUID studentId;
     private String studentName;
-    private Long productId;
+    private UUID productId;
     private String productTitle;
     private String productType;
     private Integer quantity;

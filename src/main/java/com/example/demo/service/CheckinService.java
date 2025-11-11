@@ -6,6 +6,7 @@ import com.example.demo.dto.response.CheckinResponseDTO; // Cần tạo DTO này
 import com.example.demo.dto.response.StudentResponseDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.util.UUID;
 
 public interface CheckinService {
     
@@ -15,7 +16,7 @@ public interface CheckinService {
      * @param requestDTO DTO containing the student's phone number.
      * @return A DTO of the check-in record, including reward status.
      */
-    CheckinResponseDTO performCheckin(Long eventId, CheckinRequestDTO requestDTO, AuthPrincipal principal);
-    CheckinResponseDTO registerEvent(String cognitoSub, Long eventId);
-    Page<StudentResponseDTO> getAttendeesByEvent(Long eventId, Pageable pageable);
+    CheckinResponseDTO performCheckin(UUID eventId, CheckinRequestDTO requestDTO, AuthPrincipal principal);
+    CheckinResponseDTO registerEvent(String cognitoSub, UUID eventId);
+    Page<StudentResponseDTO> getAttendeesByEvent(UUID eventId, Pageable pageable);
 }

@@ -11,8 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.UUID; // <<< THÊM IMPORT
 
 @Service
 public class EventCategoryServiceImpl implements EventCategoryService {
@@ -42,7 +41,7 @@ public class EventCategoryServiceImpl implements EventCategoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public EventCategoryResponseDTO getCategoryById(Long categoryId) {
+    public EventCategoryResponseDTO getCategoryById(UUID categoryId) { // SỬA: Long -> UUID
         EventCategory category = eventCategoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event category not found with id: " + categoryId));
         return convertToDTO(category);
@@ -57,7 +56,7 @@ public class EventCategoryServiceImpl implements EventCategoryService {
 
     @Override
     @Transactional
-    public EventCategoryResponseDTO updateCategory(Long categoryId, EventCategoryRequestDTO requestDTO) {
+    public EventCategoryResponseDTO updateCategory(UUID categoryId, EventCategoryRequestDTO requestDTO) { // SỬA: Long -> UUID
         // 1. Tìm category cần cập nhật
         EventCategory category = eventCategoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event category not found with id: " + categoryId));
@@ -81,12 +80,10 @@ public class EventCategoryServiceImpl implements EventCategoryService {
 
     @Override
     @Transactional
-    public void deleteCategory(Long categoryId) {
+    public void deleteCategory(UUID categoryId) { // SỬA: Long -> UUID
         if (!eventCategoryRepository.existsById(categoryId)) {
             throw new ResourceNotFoundException("Event category not found with id: " + categoryId);
         }
-        // Lưu ý: Cần xử lý logic nếu category này đang được sử dụng bởi các Event.
-        // Ví dụ: không cho xóa hoặc gán các event đó về category "Uncategorized".
         eventCategoryRepository.deleteById(categoryId);
     }
 

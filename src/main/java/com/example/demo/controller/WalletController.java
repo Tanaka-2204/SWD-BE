@@ -19,10 +19,11 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/wallets")
-@Tag(name = "4. Wallet & Transactions")
+@Tag(name = "5. Wallet & Transactions")
 @SecurityRequirement(name = "bearerAuth")
 public class WalletController {
 
@@ -40,7 +41,7 @@ public class WalletController {
     @GetMapping("/{id}")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<WalletResponseDTO> getWalletById(
-            @Parameter(description = "ID of the wallet") @PathVariable Long id) {
+            @Parameter(description = "ID of the wallet") @PathVariable UUID id) {
         WalletResponseDTO wallet = walletService.getWalletById(id);
         return ResponseEntity.ok(wallet);
     }

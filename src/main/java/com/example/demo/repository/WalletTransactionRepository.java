@@ -6,11 +6,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface WalletTransactionRepository extends JpaRepository<WalletTransaction, Long> {
+public interface WalletTransactionRepository extends JpaRepository<WalletTransaction, UUID> {
 
-    Page<WalletTransaction> findByWalletId(Long walletId, Pageable pageable);
+    Page<WalletTransaction> findByWalletId(UUID walletId, Pageable pageable);
 
     /**
      * Finds a transaction by its idempotency key to prevent duplicate operations.
@@ -21,7 +22,7 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
      * Finds the original transaction that needs to be rolled back/refunded.
      * Optionally check if it has already been refunded.
      */
-    // Optional<WalletTransaction> findByIdAndRefundTxnIdIsNull(Long id); // Ví dụ kiểm tra đã refund chưa
+    // Optional<WalletTransaction> findByIdAndRefundTxnIdIsNull(UUID id); // Ví dụ kiểm tra đã refund chưa
 
     /**
      * Finds all transactions for admin monitoring, ordered by creation date descending.

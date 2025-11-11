@@ -5,10 +5,11 @@ import org.springframework.data.jpa.domain.Specification;
 import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class EventSpecifications {
 
-    public static Specification<Event> filterBy(Long categoryId, String status) {
+    public static Specification<Event> filterBy(UUID categoryId, String status) {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
 

@@ -15,10 +15,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1") // Tiền tố chung
-@Tag(name = "3. Partner Actions") // Gắn tag Swagger cho rõ ràng
+@Tag(name = "3. Events & Registration") // Gắn tag Swagger cho rõ ràng
 public class EventFundingController {
 
     private final EventFundingService eventFundingService;
@@ -47,7 +48,7 @@ public class EventFundingController {
     @PreAuthorize("hasRole('PARTNERS')") // Chỉ Partner mới được gọi
     public ResponseEntity<EventFundingResponseDTO> fundEvent(
             @Parameter(description = "ID của Partner thực hiện nạp tiền") 
-            @PathVariable Long partnerId,
+            @PathVariable UUID partnerId,
             
             @Valid @RequestBody EventFundingRequestDTO requestDTO,
             

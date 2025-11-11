@@ -1,90 +1,90 @@
 package com.example.demo.service.impl;
 
+import com.example.demo.config.AuthPrincipal;
 import com.example.demo.dto.request.BroadcastRequestDTO;
 import com.example.demo.dto.response.EventBroadcastResponseDTO;
+import com.example.demo.dto.response.StudentBroadcastResponseDTO;
+import com.example.demo.entity.enums.BroadcastDeliveryStatus; // <<< THÊM IMPORT
+import com.example.demo.exception.BadRequestException;
 import com.example.demo.entity.BroadcastDelivery;
-import com.example.demo.entity.Checkin; // <<< SỬA ĐỔI: Import Checkin
+import com.example.demo.entity.Checkin;
 import com.example.demo.entity.Event;
 import com.example.demo.entity.EventBroadcast;
-// import com.example.demo.entity.Registration; // <<< XÓA
 import com.example.demo.exception.ForbiddenException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.BroadcastDeliveryRepository;
 import com.example.demo.repository.EventBroadcastRepository;
 import com.example.demo.repository.EventRepository;
 import com.example.demo.repository.PartnerRepository;
-import com.example.demo.repository.CheckinRepository; // <<< SỬA ĐỔI: Dùng CheckinRepository
-// import com.example.demo.repository.RegistrationRepository; // <<< XÓA
+import com.example.demo.repository.StudentRepository;
+import com.example.demo.repository.CheckinRepository;
+import java.util.UUID;
 import com.example.demo.service.BroadcastService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Map;
 
 @Service
 public class BroadcastServiceImpl implements BroadcastService {
 
     private final PartnerRepository partnerRepository;
     private final EventRepository eventRepository;
-    private final CheckinRepository checkinRepository; // <<< SỬA ĐỔI
+    private final CheckinRepository checkinRepository;
     private final EventBroadcastRepository eventBroadcastRepository;
     private final BroadcastDeliveryRepository broadcastDeliveryRepository;
+    private final StudentRepository studentRepository;
 
-    // <<< SỬA ĐỔI HÀM TẠO (Constructor)
-    public BroadcastServiceImpl(PartnerRepository partnerRepository, 
-                                EventRepository eventRepository, 
-                                CheckinRepository checkinRepository, // <<< SỬA ĐỔI
-                                EventBroadcastRepository eventBroadcastRepository, 
-                                BroadcastDeliveryRepository broadcastDeliveryRepository) {
+    public BroadcastServiceImpl(PartnerRepository partnerRepository,
+            EventRepository eventRepository,
+            CheckinRepository checkinRepository,
+            EventBroadcastRepository eventBroadcastRepository,
+            BroadcastDeliveryRepository broadcastDeliveryRepository, StudentRepository studentRepository) {
         this.partnerRepository = partnerRepository;
         this.eventRepository = eventRepository;
-        this.checkinRepository = checkinRepository; // <<< SỬA ĐỔI
+        this.checkinRepository = checkinRepository;
         this.eventBroadcastRepository = eventBroadcastRepository;
         this.broadcastDeliveryRepository = broadcastDeliveryRepository;
+        this.studentRepository = studentRepository;
     }
 
     @Override
-    @Transactional
-    public EventBroadcastResponseDTO sendBroadcast(Long partnerId, BroadcastRequestDTO requestDTO) {
-        // 1. Lấy sự kiện
-        Event event = eventRepository.findById(requestDTO.getEventId())
-                .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + requestDTO.getEventId()));
-        
-        // 2. Kiểm tra quyền: Partner này có phải người tổ chức sự kiện không?
-        if (!event.getPartner().getId().equals(partnerId)) {
-            throw new ForbiddenException("Partner does not own this event.");
-        }
-
-        // 3. Tạo bản ghi broadcast chính
-        EventBroadcast broadcast = new EventBroadcast();
-        broadcast.setEvent(event);
-        broadcast.setMessageContent(requestDTO.getMessageContent());
-        EventBroadcast savedBroadcast = eventBroadcastRepository.save(broadcast);
-
-        // 4. Lấy danh sách sinh viên đã đăng ký (TỪ BẢNG CHECKIN)
-        // <<< SỬA ĐỔI LOGIC LẤY DANH SÁCH
-        List<Checkin> checkins = checkinRepository.findAllByEventId(event.getId());
-
-        // 5. Tạo các bản ghi delivery cho từng sinh viên
-        if (!checkins.isEmpty()) {
-            List<BroadcastDelivery> deliveries = checkins.stream() // <<< SỬA ĐỔI: Dùng checkins
-                    .map(checkin -> { // <<< SỬA ĐỔI: Dùng checkin
-                        BroadcastDelivery delivery = new BroadcastDelivery();
-                        delivery.setBroadcast(savedBroadcast);
-                        delivery.setStudent(checkin.getStudent()); // <<< SỬA ĐỔI: Lấy student từ checkin
-                        delivery.setStatus("SENT"); // Trạng thái ban đầu
-                        return delivery;
-                    })
-                    .collect(Collectors.toList());
-            
-            broadcastDeliveryRepository.saveAll(deliveries);
-        }
-        
-        // (Trong tương lai, đây là lúc trigger gửi Push Notification/Email)
-
-        return convertToDTO(savedBroadcast);
+@Transactional
+public EventBroadcastResponseDTO sendBroadcast(UUID partnerId, BroadcastRequestDTO requestDTO) {
+    // 1. Lấy sự kiện
+    Event event = eventRepository.findById(requestDTO.getEventId())
+            .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + requestDTO.getEventId()));
+    // 2. Kiểm tra quyền: Partner này có phải người tổ chức sự kiện không?
+    if (!event.getPartner().getId().equals(partnerId)) {
+        throw new ForbiddenException("Partner does not own this event.");
     }
+    // 3. Tạo bản ghi broadcast chính
+    EventBroadcast broadcast = new EventBroadcast();
+    broadcast.setEvent(event);
+    broadcast.setMessageContent(requestDTO.getMessageContent());
+    EventBroadcast savedBroadcast = eventBroadcastRepository.save(broadcast);
+    // 4. Lấy danh sách sinh viên đã đăng ký (TỪ BẢNG CHECKIN)
+    List<Checkin> checkins = checkinRepository.findAllByEventId(event.getId());
+    // 5. Tạo các bản ghi delivery cho từng sinh viên
+    if (!checkins.isEmpty()) {
+        List<BroadcastDelivery> deliveries = checkins.stream()
+                .map(checkin -> {
+                    BroadcastDelivery delivery = new BroadcastDelivery();
+                    delivery.setBroadcast(savedBroadcast);
+                    delivery.setStudent(checkin.getStudent());
+                    delivery.setStatus(BroadcastDeliveryStatus.UNREAD); 
+                    return delivery;
+                })
+                .collect(Collectors.toList());
+
+        broadcastDeliveryRepository.saveAll(deliveries);
+    }
+
+    return convertToDTO(savedBroadcast);
+}
 
     @Override
     @Transactional
@@ -92,32 +92,84 @@ public class BroadcastServiceImpl implements BroadcastService {
         // 1. Tạo bản ghi broadcast chính (không liên kết với event cụ thể)
         EventBroadcast broadcast = new EventBroadcast();
         broadcast.setMessageContent(requestDTO.getMessageContent());
-        // Có thể set eventId = null hoặc tạo field riêng cho system broadcast
         EventBroadcast savedBroadcast = eventBroadcastRepository.save(broadcast);
 
-        // 2. Lấy tất cả sinh viên trong hệ thống (giả sử có StudentRepository)
-        // Giả sử có StudentRepository để lấy tất cả sinh viên
-        // List<Student> allStudents = studentRepository.findAll();
-
-        // Vì chưa có StudentRepository trong code hiện tại, tạm thời tạo logic giả
-        // Trong thực tế, cần inject StudentRepository và lấy tất cả sinh viên
-
-        // 3. Tạo delivery cho tất cả sinh viên
-        // List<BroadcastDelivery> deliveries = allStudents.stream()
-        //     .map(student -> {
-        //         BroadcastDelivery delivery = new BroadcastDelivery();
-        //         delivery.setBroadcast(savedBroadcast);
-        //         delivery.setStudent(student);
-        //         delivery.setStatus("SENT");
-        //         return delivery;
-        //     })
-        //     .collect(Collectors.toList());
-
-        // broadcastDeliveryRepository.saveAll(deliveries);
-
-        // (Trong tương lai, trigger gửi Push Notification/Email cho tất cả sinh viên)
-
         return convertToDTO(savedBroadcast);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<StudentBroadcastResponseDTO> getMyBroadcasts(AuthPrincipal principal, String status,
+            Pageable pageable) {
+        UUID studentId = getStudentIdFromPrincipal(principal);
+
+        Page<BroadcastDelivery> deliveryPage;
+        if (status != null && !status.isBlank()) {
+            BroadcastDeliveryStatus statusEnum;
+            try {
+                statusEnum = BroadcastDeliveryStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Trả về lỗi nếu client gửi status linh tinh (ví dụ: "ABC")
+                throw new BadRequestException("Invalid status value: " + status);
+            }
+            // SỬA: Gọi hàm repository với Enum
+            deliveryPage = broadcastDeliveryRepository.findByStudentIdAndStatus(studentId, statusEnum, pageable);
+        } else {
+            deliveryPage = broadcastDeliveryRepository.findByStudentId(studentId, pageable);
+        }
+
+        return deliveryPage.map(this::convertToStudentBroadcastDTO);
+    }
+
+    @Override
+    @Transactional
+    public StudentBroadcastResponseDTO markBroadcastAsRead(AuthPrincipal principal, UUID deliveryId) {
+        UUID studentId = getStudentIdFromPrincipal(principal);
+
+        BroadcastDelivery delivery = broadcastDeliveryRepository.findByIdAndStudentId(deliveryId, studentId)
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Broadcast message not found or does not belong to user."));
+        if (delivery.getStatus() != BroadcastDeliveryStatus.READ) {
+            delivery.setStatus(BroadcastDeliveryStatus.READ);
+            delivery = broadcastDeliveryRepository.save(delivery);
+        }
+
+        return convertToStudentBroadcastDTO(delivery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Long> getUnreadBroadcastCount(AuthPrincipal principal) {
+        UUID studentId = getStudentIdFromPrincipal(principal);
+        long count = broadcastDeliveryRepository.countByStudentIdAndStatus(studentId, BroadcastDeliveryStatus.UNREAD);
+        return Map.of("count", count);
+    }
+
+    private UUID getStudentIdFromPrincipal(AuthPrincipal principal) {
+        if (!principal.isStudent()) {
+            throw new ForbiddenException("Only students can access this resource.");
+        }
+        UUID studentId = principal.getStudentId();
+        if (studentId == null) {
+            throw new ResourceNotFoundException("Student profile not found. Please complete your profile.");
+        }
+        return studentId;
+    }
+
+    private StudentBroadcastResponseDTO convertToStudentBroadcastDTO(BroadcastDelivery delivery) {
+        StudentBroadcastResponseDTO dto = new StudentBroadcastResponseDTO();
+        dto.setDeliveryId(delivery.getId());
+        dto.setStatus(delivery.getStatus().name());
+        EventBroadcast broadcast = delivery.getBroadcast();
+        if (broadcast != null) {
+            dto.setMessageContent(broadcast.getMessageContent());
+            dto.setSentAt(broadcast.getSentAt());
+            if (broadcast.getEvent() != null) {
+                dto.setEventId(broadcast.getEvent().getId());
+                dto.setEventTitle(broadcast.getEvent().getTitle());
+            }
+        }
+        return dto;
     }
 
     // Helper method đã được hoàn thiện
@@ -131,7 +183,7 @@ public class BroadcastServiceImpl implements BroadcastService {
             dto.setEventId(broadcast.getEvent().getId());
             dto.setEventTitle(broadcast.getEvent().getTitle());
         }
-        
+
         return dto;
     }
 }

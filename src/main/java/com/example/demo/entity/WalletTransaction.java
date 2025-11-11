@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-
+import java.util.UUID;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
@@ -17,9 +17,9 @@ import java.time.OffsetDateTime;
 public class WalletTransaction {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "txn_id", nullable = false)
-    private Long id;
+    private UUID id;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -43,7 +43,7 @@ public class WalletTransaction {
     private String referenceType;
 
     @Column(name = "reference_id")
-    private Long referenceId;
+    private UUID referenceId;
 
     @Size(max = 120)
     @Column(name = "idempotency_key", length = 120, unique = true) // THÊM unique = true

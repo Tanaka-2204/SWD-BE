@@ -1,35 +1,6 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  loyalty-postgres:
-    image: postgres:17-alpine
-    container_name: loyalty-postgres
-    restart: unless-stopped
-    environment:
-      # Tên database
-      POSTGRES_DB: loyaltysystem_kzfr
-      # Username
-      POSTGRES_USER: loyaltysystem_kzfr_user
-      # Password
-      POSTGRES_PASSWORD: LDPaZKe2gZJm3ASGhHWQ8BC4HAZGPfGL
-      # Thư mục lưu data trong container
-      PGDATA: /var/lib/postgresql/data/pgdata
-    ports:
-      # Port mapping: host:container (5432 trên máy bạn -> 5432 trong container)
-      - "5432:5432"
-    volumes:
-      # Lưu data vào volume để không mất khi restart
-      - loyalty_postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      # Kiểm tra PostgreSQL có sẵn sàng không
-      test: ["CMD-SHELL", "pg_isready -U loyaltysystem_kzfr_user -d loyaltysystem_kzfr"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - loyalty-network
-
   # Spring Boot Application
   loyalty-backend:
     build:
@@ -37,15 +8,21 @@ services:
       dockerfile: Dockerfile
     container_name: loyalty-backend
     restart: unless-stopped
-    depends_on:
-      # Đợi PostgreSQL khởi động xong mới chạy app
-      loyalty-postgres:
-        condition: service_healthy
     environment:
-      # Sử dụng profile docker (đọc từ application-docker.properties)
-      SPRING_PROFILE: docker
+      # Sử dụng profile docker (kết nối Render DB)
+      SPRING_PROFILE: ${SPRING_PROFILE}
+      # AWS Credentials
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+      # AWS Cognito
+      JWT_JWK_SET_URI: ${JWT_JWK_SET_URI}
+      AWS_COGNITO_USER_POOL_ID: ${AWS_COGNITO_USER_POOL_ID}
+      AWS_COGNITO_CLIENT_ID: ${AWS_COGNITO_CLIENT_ID}
+      AWS_COGNITO_CLIENT_SECRET: ${AWS_COGNITO_CLIENT_SECRET}
       # JVM memory settings
-      JAVA_OPTS: -Xms512m -Xmx1024m
+      JAVA_OPTS: ${JAVA_OPTS}
     ports:
       # Port mapping: 8080 trên máy bạn -> 8080 trong container
       - "8080:8080"
@@ -58,11 +35,6 @@ services:
       start_period: 60s
     networks:
       - loyalty-network
-
-# Volumes để lưu trữ data
-volumes:
-  loyalty_postgres_data:
-    driver: local
 
 # Network để các container giao tiếp với nhau
 networks:

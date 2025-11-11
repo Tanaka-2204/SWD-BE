@@ -27,7 +27,6 @@ import org.springframework.data.domain.Page; // <<< THÊM
 import org.springframework.data.domain.PageRequest; // <<< THÊM
 import org.springframework.data.domain.Pageable; // <<< THÊM
 import org.springframework.data.domain.Sort;
-import io.swagger.v3.oas.annotations.Parameter;
 
 @RestController
 @RequestMapping("/api/v1/students")
@@ -105,7 +104,7 @@ public class StudentController {
             @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "startTime,desc") String sort) {
+            @RequestParam(defaultValue = "checkinTime,desc") String sort) {
 
         Pageable pageable = createPageable(page, size, sort);
         

@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Service
 public class WalletServiceImpl implements WalletService {
@@ -26,7 +27,8 @@ public class WalletServiceImpl implements WalletService {
     private StudentRepository studentRepository;
     private final PartnerRepository partnerRepository;
 
-    private static final Long ADMIN_WALLET_OWNER_ID = 1L; // Cấu hình Admin Wallet ID
+    // SỬA LỖI: Long -> UUID. Sử dụng UUID cố định cho Admin Wallet.
+    private static final UUID ADMIN_WALLET_OWNER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001"); 
     private static final String ADMIN_OWNER_TYPE = "ADMIN";
 
     public WalletServiceImpl(WalletRepository walletRepository, WalletTransactionRepository transactionRepository, StudentRepository studentRepository, PartnerRepository partnerRepository) {
@@ -39,7 +41,7 @@ public class WalletServiceImpl implements WalletService {
     // --- READ OPERATIONS ---
     @Override
     @Transactional(readOnly = true)
-    public WalletResponseDTO getWalletById(Long walletId) {
+    public WalletResponseDTO getWalletById(UUID walletId) {
         Wallet wallet = findWalletByIdOrThrow(walletId);
         return convertToWalletDTO(wallet);
     }
@@ -49,7 +51,7 @@ public class WalletServiceImpl implements WalletService {
     // =======================================================
     @Override
     @Transactional(readOnly = true)
-    public WalletResponseDTO getWalletByOwner(String ownerType, Long ownerId) {
+    public WalletResponseDTO getWalletByOwner(String ownerType, UUID ownerId) {
         Wallet wallet = walletRepository.findByOwnerTypeAndOwnerId(ownerType, ownerId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Wallet not found for ownerType: " + ownerType + " and ownerId: " + ownerId));
@@ -60,33 +62,32 @@ public class WalletServiceImpl implements WalletService {
     // (Hàm này được PartnerController gọi, giữ nguyên)
     @Override
     @Transactional(readOnly = true)
-    public Page<WalletTransactionResponseDTO> getTransactionHistory(Long ownerId, String ownerType, Pageable pageable) {
+    public Page<WalletTransactionResponseDTO> getTransactionHistory(UUID ownerId, String ownerType, Pageable pageable) {
         
-        // SỬA LỖI TẠI ĐÂY:
-        // Lỗi của bạn là: walletRepository.findByOwnerIdAndOwnerType(ownerId, ownerType, pageable)
-        // Sửa thành:
         Wallet wallet = walletRepository.findByOwnerTypeAndOwnerId(ownerType, ownerId) 
                 .orElseThrow(() -> new ResourceNotFoundException(ownerType + " wallet not found for ID: " + ownerId));
         
-        // SỬA LỖI TẠI ĐÂY: (Gọi hàm 'findByWalletId' đã sửa ở Bước 2)
+        // SỬA LỖI TẠI ĐÂY: (Gọi hàm 'findByWalletId' đã sửa ở Repository)
         return transactionRepository.findByWalletId(wallet.getId(), pageable)
-                                          .map(this::convertToTransactionDTO); // (Dùng hàm helper của bạn)
+                                     .map(this::convertToTransactionDTO); 
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<WalletTransactionResponseDTO> getTransactionHistoryForUser(AuthPrincipal principal, Pageable pageable) {
         
-        Long walletId = null;
+        UUID walletId = null;
 
         // 1. Tìm Wallet ID dựa trên vai trò
         if (principal.isPartner()) {
+            // Đảm bảo principal.getPartnerId() trả về UUID
             Partner partner = partnerRepository.findById(principal.getPartnerId())
                     .orElseThrow(() -> new ResourceNotFoundException("Partner profile not found for ID: " + principal.getPartnerId()));
             if(partner.getWallet() == null) throw new ResourceNotFoundException("Partner wallet not found.");
             walletId = partner.getWallet().getId();
             
         } else if (principal.isStudent()) {
+            // Đảm bảo principal.getStudentId() trả về UUID
             Student student = studentRepository.findById(principal.getStudentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Student profile not found for ID: " + principal.getStudentId()));
             if(student.getWallet() == null) throw new ResourceNotFoundException("Student wallet not found.");
@@ -99,41 +100,43 @@ public class WalletServiceImpl implements WalletService {
             throw new ResourceNotFoundException("Wallet not found for the current user.");
         }
 
-        // 2. Gọi Repo (SỬA LỖI: Gọi hàm 'findByWalletId' đã sửa ở Bước 2)
+        // 2. Gọi Repo 
         return transactionRepository.findByWalletId(walletId, pageable)
-                                          .map(this::convertToTransactionDTO); // (Dùng hàm helper của bạn)
+                                     .map(this::convertToTransactionDTO);
     }
     
     // --- WRITE OPERATIONS ---
     @Override
     @Transactional
     public WalletTransactionResponseDTO adminTopupForPartner(WalletTopupRequestDTO topupRequest) {
-         BigDecimal amount = topupRequest.getAmount();
-         Partner partner = partnerRepository.findById(topupRequest.getPartnerId())
-                 .orElseThrow(() -> new ResourceNotFoundException("Partner not found with id: " + topupRequest.getPartnerId()));
-         // Sửa lại: Lấy ví từ owner thay vì ID trực tiếp, an toàn hơn
-         Wallet partnerWallet = walletRepository.findByOwnerTypeAndOwnerId("PARTNER", partner.getId())
-                 .orElseThrow(() -> new ResourceNotFoundException("Wallet not found for partner: " + partner.getId()));
-         Wallet adminWallet = walletRepository.findByOwnerTypeAndOwnerId(ADMIN_OWNER_TYPE, ADMIN_WALLET_OWNER_ID)
-                 .orElseThrow(() -> new IllegalStateException("Admin wallet is not configured."));
+          BigDecimal amount = topupRequest.getAmount();
+          // Đảm bảo getPartnerId() trả về UUID
+          Partner partner = partnerRepository.findById(topupRequest.getPartnerId())
+                   .orElseThrow(() -> new ResourceNotFoundException("Partner not found with id: " + topupRequest.getPartnerId()));
+          
+          Wallet partnerWallet = walletRepository.findByOwnerTypeAndOwnerId("PARTNER", partner.getId())
+                   .orElseThrow(() -> new ResourceNotFoundException("Wallet not found for partner: " + partner.getId()));
+          
+          // Sử dụng hằng số ADMIN_WALLET_OWNER_ID đã sửa
+          Wallet adminWallet = walletRepository.findByOwnerTypeAndOwnerId(ADMIN_OWNER_TYPE, ADMIN_WALLET_OWNER_ID)
+                   .orElseThrow(() -> new IllegalStateException("Admin wallet is not configured."));
 
-         partnerWallet.setBalance(partnerWallet.getBalance().add(amount));
-         adminWallet.setBalance(adminWallet.getBalance().subtract(amount));
+          partnerWallet.setBalance(partnerWallet.getBalance().add(amount));
+          adminWallet.setBalance(adminWallet.getBalance().subtract(amount));
 
-         walletRepository.save(partnerWallet);
-         walletRepository.save(adminWallet);
+          walletRepository.save(partnerWallet);
+          walletRepository.save(adminWallet);
 
-         WalletTransaction transaction = new WalletTransaction();
-         transaction.setWallet(partnerWallet);
-         transaction.setCounterparty(adminWallet);
-         transaction.setTxnType("ADMIN_TOPUP");
-         transaction.setAmount(amount);
-         transaction.setReferenceType("ADMIN_ACTION");
-         // Nên thêm Idempotency Key cho cả Topup
-         // transaction.setIdempotencyKey(generateIdempotencyKey());
+          WalletTransaction transaction = new WalletTransaction();
+          transaction.setWallet(partnerWallet);
+          transaction.setCounterparty(adminWallet);
+          transaction.setTxnType("ADMIN_TOPUP");
+          transaction.setAmount(amount);
+          transaction.setReferenceType("ADMIN_ACTION");
+          // transaction.setIdempotencyKey(generateIdempotencyKey()); // Tùy chọn
 
-         WalletTransaction savedTransaction = transactionRepository.save(transaction);
-         return convertToTransactionDTO(savedTransaction);
+          WalletTransaction savedTransaction = transactionRepository.save(transaction);
+          return convertToTransactionDTO(savedTransaction);
     }
 
     @Override
@@ -142,12 +145,13 @@ public class WalletServiceImpl implements WalletService {
         // Idempotency Check
         transactionRepository.findByIdempotencyKey(request.getIdempotencyKey()).ifPresent(tx -> {
              logger.warn("Idempotency key {} already processed. Returning existing transaction.", request.getIdempotencyKey());
-             throw new DataIntegrityViolationException("Duplicate transaction: Idempotency key already used."); // Nên throw lỗi rõ ràng
+             throw new DataIntegrityViolationException("Duplicate transaction: Idempotency key already used."); 
         });
 
 
         BigDecimal amount = request.getAmount();
-        Wallet fromWallet = findWalletByIdOrThrow(request.getFromWalletId());
+        // Đảm bảo getFromWalletId() và getToWalletId() trả về UUID
+        Wallet fromWallet = findWalletByIdOrThrow(request.getFromWalletId()); 
         Wallet toWallet = findWalletByIdOrThrow(request.getToWalletId());
 
         if (fromWallet.getId().equals(toWallet.getId())) {
@@ -189,6 +193,7 @@ public class WalletServiceImpl implements WalletService {
         });
 
         BigDecimal amount = request.getAmount();
+        // Đảm bảo getStudentWalletId() trả về UUID
         Wallet studentWallet = findWalletByIdOrThrow(request.getStudentWalletId());
 
         // Check balance
@@ -206,6 +211,7 @@ public class WalletServiceImpl implements WalletService {
         transaction.setTxnType("REDEEM_PRODUCT");
         transaction.setAmount(amount.negate()); // Ghi âm
         transaction.setReferenceType("PRODUCT_INVOICE");
+        // Đảm bảo getReferenceId() trả về UUID
         transaction.setReferenceId(request.getReferenceId());
         transaction.setIdempotencyKey(request.getIdempotencyKey());
 
@@ -217,15 +223,16 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletTransactionResponseDTO rollbackTransaction(WalletRollbackRequestDTO request) {
-         // Idempotency Check for rollback itself
+          // Idempotency Check for rollback itself
         transactionRepository.findByIdempotencyKey(request.getIdempotencyKey()).ifPresent(tx -> {
              logger.warn("Idempotency key {} already processed for rollback. Returning existing transaction.", request.getIdempotencyKey());
              throw new DataIntegrityViolationException("Duplicate transaction: Idempotency key already used.");
         });
 
         // 1. Find the original transaction
+        // Đảm bảo getOriginalTransactionId() trả về UUID
         WalletTransaction originalTx = transactionRepository.findById(request.getOriginalTransactionId())
-                .orElseThrow(() -> new ResourceNotFoundException("Original transaction not found: " + request.getOriginalTransactionId()));
+                 .orElseThrow(() -> new ResourceNotFoundException("Original transaction not found: " + request.getOriginalTransactionId()));
 
         // TODO: Add more checks (e.g., if already rolled back, type allowed?)
 
@@ -264,7 +271,7 @@ public class WalletServiceImpl implements WalletService {
     }
 
     // --- HELPER METHODS ---
-    private Wallet findWalletByIdOrThrow(Long walletId) {
+    private Wallet findWalletByIdOrThrow(UUID walletId) {
         return walletRepository.findById(walletId)
                 .orElseThrow(() -> new ResourceNotFoundException("Wallet not found with id: " + walletId));
     }
@@ -282,7 +289,7 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     @Transactional
-    public void deductBalance(String ownerType, Long ownerId, BigDecimal amount, String referenceType, Long referenceId) {
+    public void deductBalance(String ownerType, UUID ownerId, BigDecimal amount, String referenceType, UUID referenceId) {
         Wallet wallet = walletRepository.findByOwnerTypeAndOwnerId(ownerType, ownerId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Wallet not found for ownerType: " + ownerType + " and ownerId: " + ownerId));
@@ -307,7 +314,7 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     @Transactional
-    public void refundBalance(String ownerType, Long ownerId, BigDecimal amount, String referenceType, Long referenceId) {
+    public void refundBalance(String ownerType, UUID ownerId, BigDecimal amount, String referenceType, UUID referenceId) {
         Wallet wallet = walletRepository.findByOwnerTypeAndOwnerId(ownerType, ownerId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Wallet not found for ownerType: " + ownerType + " and ownerId: " + ownerId));
@@ -326,7 +333,7 @@ public class WalletServiceImpl implements WalletService {
         transactionRepository.save(transaction);
     }
 
-    private String generateIdempotencyKey(String referenceType, Long referenceId, String txnType) {
+    private String generateIdempotencyKey(String referenceType, UUID referenceId, String txnType) {
         return referenceType + "_" + referenceId + "_" + txnType + "_" + System.currentTimeMillis();
     }
 

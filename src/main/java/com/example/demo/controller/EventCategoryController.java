@@ -14,11 +14,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/event-categories")
-@Tag(name = "7. Public Data")
+@Tag(name = "6. Public Data")
 public class EventCategoryController {
 
     private final EventCategoryService eventCategoryService;
@@ -50,7 +50,7 @@ public class EventCategoryController {
     })
     @GetMapping("/{id}")
     public ResponseEntity<EventCategoryResponseDTO> getCategoryById(
-            @Parameter(description = "ID of the category to retrieve") @PathVariable Long id) {
+            @Parameter(description = "ID of the category to retrieve") @PathVariable UUID id) {
         return ResponseEntity.ok(eventCategoryService.getCategoryById(id));
     }
 

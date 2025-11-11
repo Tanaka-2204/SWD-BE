@@ -3,15 +3,16 @@ package com.example.demo.dto.response;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Data
 public class EventFundingResponseDTO {
 
-    private Long id;
+    private UUID id;
 
-    private Long eventId;
+    private UUID eventId;
 
-    private Long partnerId;
+    private UUID partnerId;
 
     private String partnerName;
 

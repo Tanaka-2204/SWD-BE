@@ -5,14 +5,15 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 import lombok.Data;
+import java.util.UUID;
 
 @Data
 public class WalletTransferRequestDTO {
     @NotNull
-    private Long fromWalletId;
+    private UUID fromWalletId;
 
     @NotNull
-    private Long toWalletId;
+    private UUID toWalletId;
 
     @NotNull
     @Positive

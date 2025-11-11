@@ -6,20 +6,21 @@ import com.example.demo.dto.response.PartnerResponseDTO;
 import com.example.demo.exception.BadRequestException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.util.UUID;
 
 public interface PartnerService {
 
     PartnerResponseDTO createPartner(PartnerRequestDTO requestDTO) throws BadRequestException;
 
-    PartnerResponseDTO getPartnerById(Long partnerId);
+    PartnerResponseDTO getPartnerById(UUID partnerId);
 
     PartnerResponseDTO getPartnerByCognitoSub(String cognitoSub);
 
     Page<PartnerResponseDTO> getAllPartners(Pageable pageable);
 
-    PartnerResponseDTO updatePartner(Long partnerId, PartnerRequestDTO requestDTO);
+    PartnerResponseDTO updatePartner(UUID partnerId, PartnerRequestDTO requestDTO);
 
-    PartnerResponseDTO updatePartnerStatus(Long partnerId, UserStatusUpdateDTO dto);
+    PartnerResponseDTO updatePartnerStatus(UUID partnerId, UserStatusUpdateDTO dto);
 
-    void deletePartner(Long partnerId);
+    void deletePartner(UUID partnerId);
 }

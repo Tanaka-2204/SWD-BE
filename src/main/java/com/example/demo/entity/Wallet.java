@@ -13,7 +13,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-
+import java.util.UUID;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
@@ -26,16 +26,16 @@ import java.time.OffsetDateTime;
 public class Wallet {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID) // SỬA ĐỔI CHIẾN LƯỢC
     @Column(name = "wallet_id", nullable = false)
-    private Long id;
+    private UUID id;
 
     @Size(max = 20)
     @Column(name = "owner_type", length = 20)
     private String ownerType;
 
     @Column(name = "owner_id")
-    private Long ownerId;
+    private UUID ownerId;
 
     @Size(max = 10)
     @NotNull

@@ -4,16 +4,17 @@ import com.example.demo.dto.request.EventCategoryRequestDTO;
 import com.example.demo.dto.response.EventCategoryResponseDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.util.UUID;
 
 public interface EventCategoryService {
 
     EventCategoryResponseDTO createCategory(EventCategoryRequestDTO requestDTO);
 
-    EventCategoryResponseDTO getCategoryById(Long categoryId);
+    EventCategoryResponseDTO getCategoryById(UUID categoryId);
 
     Page<EventCategoryResponseDTO> getAllCategories(Pageable pageable);
 
-    EventCategoryResponseDTO updateCategory(Long categoryId, EventCategoryRequestDTO requestDTO);
+    EventCategoryResponseDTO updateCategory(UUID categoryId, EventCategoryRequestDTO requestDTO);
 
-    void deleteCategory(Long categoryId);
+    void deleteCategory(UUID categoryId);
 }

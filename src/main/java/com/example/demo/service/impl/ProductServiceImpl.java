@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID; // <<< THÊM IMPORT
 import java.util.stream.Collectors;
 
 @Service
@@ -43,7 +44,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public ProductResponseDTO getProductById(Long id) {
+    public ProductResponseDTO getProductById(UUID id) { // SỬA: Long -> UUID
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
         return convertToDTO(product);
@@ -69,7 +70,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
-    public ProductResponseDTO updateProduct(Long id, ProductRequestDTO request) {
+    public ProductResponseDTO updateProduct(UUID id, ProductRequestDTO request) { // SỬA: Long -> UUID
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
 
@@ -86,7 +87,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
-    public void deleteProduct(Long id) {
+    public void deleteProduct(UUID id) { // SỬA: Long -> UUID
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
         product.setIsActive(false);

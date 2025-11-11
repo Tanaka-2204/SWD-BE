@@ -23,7 +23,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+import java.util.UUID; // <<< THÊM IMPORT
 import java.util.stream.Collectors;
 
 @Service
@@ -91,7 +91,7 @@ public class ProductInvoiceServiceImpl implements ProductInvoiceService {
 
     @Override
     @Transactional
-    public ProductResponseDTO deliverInvoice(Long invoiceId, String deliveredBy) {
+    public ProductResponseDTO deliverInvoice(UUID invoiceId, String deliveredBy) { // SỬA: Long -> UUID
         ProductInvoice invoice = productInvoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: " + invoiceId));
 
@@ -110,7 +110,7 @@ public class ProductInvoiceServiceImpl implements ProductInvoiceService {
 
     @Override
     @Transactional
-    public ProductResponseDTO cancelInvoice(Long invoiceId) {
+    public ProductResponseDTO cancelInvoice(UUID invoiceId) { // SỬA: Long -> UUID
         ProductInvoice invoice = productInvoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: " + invoiceId));
 
@@ -138,7 +138,7 @@ public class ProductInvoiceServiceImpl implements ProductInvoiceService {
 
     @Override
     @Transactional(readOnly = true)
-    public ProductInvoiceResponseDTO getInvoiceById(Long invoiceId) {
+    public ProductInvoiceResponseDTO getInvoiceById(UUID invoiceId) { // SỬA: Long -> UUID
         ProductInvoice invoice = productInvoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: " + invoiceId));
         return convertToInvoiceDTO(invoice);
@@ -146,7 +146,7 @@ public class ProductInvoiceServiceImpl implements ProductInvoiceService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ProductInvoiceResponseDTO> getStudentInvoices(Long studentId, String status, String sortBy, String order, Integer limit, Integer offset) {
+    public Page<ProductInvoiceResponseDTO> getStudentInvoices(UUID studentId, String status, String sortBy, String order, Integer limit, Integer offset) { // SỬA: Long -> UUID
         Sort sort = createSort(sortBy, order);
         Pageable pageable = PageRequest.of(offset / limit, limit, sort);
 
