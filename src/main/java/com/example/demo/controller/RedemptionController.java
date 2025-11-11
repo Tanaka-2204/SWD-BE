@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
+import java.util.UUID;
 import java.util.List;
 
 @RestController
@@ -43,7 +43,7 @@ public class RedemptionController {
     @PostMapping("/products/{productId}/redeem")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ProductInvoiceResponseDTO> redeemProduct(
-            @PathVariable Long productId,
+            @PathVariable UUID productId,
             @AuthenticationPrincipal AuthPrincipal principal) {
         log.info("Student {} redeeming product {}", principal.getCognitoSub(), productId);
         ProductInvoiceResponseDTO invoice = redemptionService.redeemProduct(principal.getCognitoSub(), productId);

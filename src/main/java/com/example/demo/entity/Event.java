@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
-
+import java.util.UUID;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
@@ -16,10 +16,11 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "event")
 public class Event {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "event_id", nullable = false)
-    private Long id;
+    private UUID id;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

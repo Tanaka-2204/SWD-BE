@@ -11,7 +11,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-
+import java.util.UUID;
 import java.time.OffsetDateTime;
 
 @Getter
@@ -21,9 +21,9 @@ import java.time.OffsetDateTime;
 public class University {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID) // SỬA ĐỔI CHIẾN LƯỢC
     @Column(name = "university_id", nullable = false)
-    private Long id;
+    private UUID id;
 
     @Size(max = 200)
     @NotNull

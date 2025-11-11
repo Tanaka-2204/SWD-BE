@@ -3,7 +3,7 @@ package com.example.demo.dto.request;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
-
+import java.util.UUID;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
@@ -22,11 +22,7 @@ public class EventUpdateDTO {
     @Size(max = 200)
     private String location;
 
-    private Long categoryId;
-
-    // =========================================================
-    // THAY THẾ CÁC TRƯỜNG ĐIỂM
-    // =========================================================
+    private UUID categoryId;
     
     // 1. Điểm cọc đăng ký (Cho phép cập nhật)
     @Min(value = 0, message = "Điểm cọc phải là số không âm.")

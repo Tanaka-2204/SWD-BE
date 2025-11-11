@@ -18,6 +18,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import java.util.Collection;
+import java.util.UUID;
 import java.util.Set; // <<< THÊM
 import java.util.stream.Collectors; // <<< THÊM
 import java.util.Optional; // <<< THÊM
@@ -78,9 +79,9 @@ public class AuthPrincipalArgumentResolver implements HandlerMethodArgumentResol
             username = email;
         }
 
-        Long studentId = null;
-        Long partnerId = null;
-        Long adminId = null;
+        UUID studentId = null;
+        UUID partnerId = null;
+        UUID adminId = null;
 
         if (roles.contains("ROLE_ADMIN")) {
             logger.info("--- DEBUG RESOLVER: User is ADMIN. Searching admin table...");

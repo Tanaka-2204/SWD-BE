@@ -9,30 +9,31 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import com.example.demo.entity.Event;
 import java.util.List;
+import java.util.UUID;
 
 public interface EventService {
 
     // --- CRUD Methods ---
     EventResponseDTO createEvent(AuthPrincipal principal, EventCreateDTO requestDTO);
 
-    EventResponseDTO getEventById(Long eventId);
+    EventResponseDTO getEventById(UUID eventId);
 
     Page<EventResponseDTO> getAllEvents(Specification<Event> spec, Pageable pageable);
 
-    EventResponseDTO updateEvent(Long eventId, EventUpdateDTO requestDTO, AuthPrincipal principal);
+    EventResponseDTO updateEvent(UUID eventId, EventUpdateDTO requestDTO, AuthPrincipal principal);
 
-    void deleteEvent(Long eventId, AuthPrincipal principal);
+    void deleteEvent(UUID eventId, AuthPrincipal principal);
     
     // --- Business Logic Methods ---
-    Page<EventResponseDTO> getEventsByPartner(Long partnerId, Pageable pageable);
+    Page<EventResponseDTO> getEventsByPartner(UUID partnerId, Pageable pageable);
 
-    List<EventResponseDTO> getEventsByCategory(Long categoryId);
+    List<EventResponseDTO> getEventsByCategory(UUID categoryId);
 
     Page<EventResponseDTO> getUpcomingEvents(Pageable pageable);
 
     Page<EventResponseDTO> searchEventsByTitle(String keyword, Pageable pageable);
     
-    Page<EventResponseDTO> getEventHistoryByStudent(Long studentId, Pageable pageable);
+    Page<EventResponseDTO> getEventHistoryByStudent(UUID studentId, Pageable pageable);
 
     // ==============================================================
     // PHƯƠNG THỨC MỚI: Hoàn tất và thanh toán điểm cho người tham dự
@@ -43,9 +44,9 @@ public interface EventService {
      * @param eventId ID của sự kiện cần hoàn tất
      * @return EventResponseDTO của sự kiện đã được cập nhật trạng thái
      */
-    EventResponseDTO finalizeEvent(Long eventId);
+    EventResponseDTO finalizeEvent(UUID eventId);
 
     // Admin approve event
-    EventResponseDTO approveEvent(Long eventId);
-    EventResponseDTO finalizeEvent(Long eventId, AuthPrincipal principal);
+    EventResponseDTO approveEvent(UUID eventId);
+    EventResponseDTO finalizeEvent(UUID eventId, AuthPrincipal principal);
 }

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 import java.util.Optional; 
 
 @Service
@@ -48,7 +49,7 @@ public class CheckinServiceImpl implements CheckinService {
     // (Phương thức registerEvent giữ nguyên, logic đã đúng)
     @Override
     @Transactional
-    public CheckinResponseDTO registerEvent(String cognitoSub, Long eventId) {
+    public CheckinResponseDTO registerEvent(String cognitoSub, UUID eventId) { // SỬA: Long -> UUID
         // ... (Toàn bộ logic registerEvent của bạn)
         Student student = studentRepository.findByCognitoSub(cognitoSub)
                 .orElseThrow(() -> new ResourceNotFoundException("Student profile not found."));
@@ -135,7 +136,7 @@ public class CheckinServiceImpl implements CheckinService {
     // =================================================================
     @Override
     @Transactional
-    public CheckinResponseDTO performCheckin(Long eventId, CheckinRequestDTO requestDTO, AuthPrincipal principal) {
+    public CheckinResponseDTO performCheckin(UUID eventId, CheckinRequestDTO requestDTO, AuthPrincipal principal) { // SỬA: Long -> UUID
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventId));
         
@@ -171,7 +172,7 @@ public class CheckinServiceImpl implements CheckinService {
     // (Phương thức getAttendeesByEvent giữ nguyên)
     @Override
     @Transactional(readOnly = true)
-    public Page<StudentResponseDTO> getAttendeesByEvent(Long eventId, Pageable pageable) {
+    public Page<StudentResponseDTO> getAttendeesByEvent(UUID eventId, Pageable pageable) { // SỬA: Long -> UUID
         if (!eventRepository.existsById(eventId)) {
             throw new ResourceNotFoundException("Event not found with id: " + eventId);
         }
@@ -181,13 +182,13 @@ public class CheckinServiceImpl implements CheckinService {
         return checkins.map(checkin -> studentService.toResponseDTO(checkin.getStudent()));
     }
 
-    // (Helper checkEventOwnership giữ nguyên)
+    // (Helper checkEventOwnership giữ nguyên logic, chỉ sửa kiểu dữ liệu)
     private void checkEventOwnership(Event event, AuthPrincipal principal) {
         if (principal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
             return;
         }
         if (principal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PARTNERS"))) {
-            Long partnerIdFromToken = principal.getPartnerId();
+            UUID partnerIdFromToken = principal.getPartnerId(); // SỬA: Long -> UUID
             
             if (partnerIdFromToken == null) { 
                 Optional<Partner> partnerOpt = partnerRepository.findByCognitoSub(principal.getCognitoSub());

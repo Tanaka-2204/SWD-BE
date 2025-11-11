@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-
+import java.util.UUID;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
@@ -13,10 +13,11 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "event_recommendation")
 public class EventRecommendation {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID) // SỬA ĐỔI CHIẾN LƯỢC
     @Column(name = "rec_id", nullable = false)
-    private Long id;
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "student_id")

@@ -7,16 +7,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
-
+import java.util.UUID;
 import java.time.OffsetDateTime;
 import java.util.List;
 
 @Repository
-public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecificationExecutor<Event> {
+public interface EventRepository extends JpaRepository<Event, UUID>, JpaSpecificationExecutor<Event> {
 
-    Page<Event> findAllByPartnerId(Long partnerId, Pageable pageable);
+    Page<Event> findAllByPartnerId(UUID partnerId, Pageable pageable);
 
-    List<Event> findAllByCategoryId(Long categoryId);
+    List<Event> findAllByCategoryId(UUID categoryId);
 
     Page<Event> findAllByStartTimeAfter(OffsetDateTime currentTime, Pageable pageable);
 

@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -14,9 +15,9 @@ import java.time.OffsetDateTime;
 @Table(name = "broadcast_delivery")
 public class BroadcastDelivery {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // THAY THẾ CÁI NÀY
+    @GeneratedValue(strategy = GenerationType.UUID) // SỬA ĐỔI CHIẾN LƯỢC
     @Column(name = "delivery_id", nullable = false)
-    private Long id;
+    private UUID id;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

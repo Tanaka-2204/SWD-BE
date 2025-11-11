@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-
+import java.util.UUID;
 import java.time.OffsetDateTime;
 
 @Getter
@@ -18,10 +18,10 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "Admin")
 public class Admin {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // SỬA ĐỔI NÀY
+   @Id
+    @GeneratedValue(strategy = GenerationType.UUID) // SỬA ĐỔI CHIẾN LƯỢC
     @Column(name = "admin_id", nullable = false)
-    private Long id;
+    private UUID id;
 
     @Column(name = "cognito_sub", unique = true, nullable = false, updatable = false)
     private String cognitoSub;

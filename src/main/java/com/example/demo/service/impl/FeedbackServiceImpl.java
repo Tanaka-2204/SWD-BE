@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional; 
+import java.util.UUID; // <<< THÊM IMPORT
 
 @Service
 public class FeedbackServiceImpl implements FeedbackService {
@@ -17,21 +18,19 @@ public class FeedbackServiceImpl implements FeedbackService {
     private final FeedbackRepository feedbackRepository;
     private final StudentRepository studentRepository;
     private final EventRepository eventRepository;
-    // private final RegistrationRepository registrationRepository; // <<< XÓA
-    private final CheckinRepository checkinRepository; // <<< SỬA ĐỔI: Thay thế
+    private final CheckinRepository checkinRepository; 
 
-    // <<< SỬA ĐỔI HÀM TẠO (Constructor)
     public FeedbackServiceImpl(FeedbackRepository feedbackRepository, StudentRepository studentRepository,
                                EventRepository eventRepository, CheckinRepository checkinRepository) {
         this.feedbackRepository = feedbackRepository;
         this.studentRepository = studentRepository;
         this.eventRepository = eventRepository;
-        this.checkinRepository = checkinRepository; // <<< SỬA ĐỔI
+        this.checkinRepository = checkinRepository; 
     }
 
     @Override
     @Transactional
-    public FeedbackResponseDTO createFeedback(Long studentId, Long eventId, FeedbackRequestDTO requestDTO) {
+    public FeedbackResponseDTO createFeedback(UUID studentId, UUID eventId, FeedbackRequestDTO requestDTO) { // SỬA: Long -> UUID
 
         // 1. Tìm sinh viên (Giữ nguyên)
         Student student = studentRepository.findById(studentId)
@@ -42,12 +41,10 @@ public class FeedbackServiceImpl implements FeedbackService {
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventId));
 
         // 3. (Quan trọng) Kiểm tra xem sinh viên đã đăng ký sự kiện này chưa
-        // <<< SỬA ĐỔI LOGIC: Dùng CheckinRepository
         boolean isRegistered = checkinRepository.existsByEventIdAndStudentId(eventId, student.getId());
         if (!isRegistered) {
              throw new ForbiddenException("You did not register for this event.");
         }
-        // <<< KẾT THÚC SỬA ĐỔI
 
         // 4. Kiểm tra xem đã feedback chưa (Giữ nguyên)
         feedbackRepository.findByStudentIdAndEventId(student.getId(), eventId).ifPresent(f -> {
@@ -68,24 +65,19 @@ public class FeedbackServiceImpl implements FeedbackService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<FeedbackResponseDTO> getAllFeedbackByEvent(Long eventId, Pageable pageable) {
-        // Gọi hàm findByEventId (sẽ tạo ở Bước 5)
-        // Hàm này đã có @EntityGraph nên convertToDTO sẽ an toàn
+    public Page<FeedbackResponseDTO> getAllFeedbackByEvent(UUID eventId, Pageable pageable) { // SỬA: Long -> UUID
         Page<Feedback> feedbackPage = feedbackRepository.findByEventId(eventId, pageable);
         return feedbackPage.map(this::convertToDTO);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<FeedbackResponseDTO> getAllFeedback(Long eventId, Pageable pageable) {
+    public Page<FeedbackResponseDTO> getAllFeedback(UUID eventId, Pageable pageable) { // SỬA: Long -> UUID
         Page<Feedback> feedbackPage;
         
         if (eventId != null) {
-            // Nếu có lọc, dùng lại hàm trên
             feedbackPage = feedbackRepository.findByEventId(eventId, pageable);
         } else {
-            // Nếu không lọc, lấy tất cả
-            // Hàm này đã có @EntityGraph (ở Bước 5) nên an toàn
             feedbackPage = feedbackRepository.findAll(pageable);
         }
         
@@ -107,7 +99,7 @@ public class FeedbackServiceImpl implements FeedbackService {
         }
         if (feedback.getEvent() != null) {
             dto.setEventId(feedback.getEvent().getId());
-            dto.setEventTitle(feedback.getEvent().getTitle()); // An toàn vì có @EntityGraph
+            dto.setEventTitle(feedback.getEvent().getTitle()); 
         }
         return dto;
     }

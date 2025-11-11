@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.UUID;
+import java.util.UUID; // <<< THÊM IMPORT
 import java.util.stream.Collectors;
 
 @Service
@@ -56,7 +56,7 @@ public class RedemptionServiceImpl implements RedemptionService {
 
     @Override
     @Transactional
-    public ProductInvoiceResponseDTO redeemProduct(String cognitoSub, Long productId) {
+    public ProductInvoiceResponseDTO redeemProduct(String cognitoSub, UUID productId) { // SỬA: Long -> UUID
         // 1. Tìm student với wallet
         Student student = studentRepository.findByCognitoSubWithWallet(cognitoSub)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
@@ -88,22 +88,17 @@ public class RedemptionServiceImpl implements RedemptionService {
 
         // 6. Trừ coin từ ví
         wallet.setBalance(wallet.getBalance().subtract(productCost));
+        // Tăng version để tránh race condition (nếu dùng optimistic locking)
+        if (wallet.getVersion() != null) {
+             wallet.setVersion(wallet.getVersion() + 1);
+        }
         walletRepository.save(wallet);
 
         // 7. Giảm stock của product
         product.setTotalStock(product.getTotalStock() - 1);
         productRepository.save(product);
 
-        // 8. Tạo wallet transaction
-        WalletTransaction transaction = new WalletTransaction();
-        transaction.setWallet(wallet);
-        transaction.setAmount(productCost.negate()); // Số âm vì trừ tiền
-        transaction.setTxnType("PRODUCT_REDEEM");
-        transaction.setReferenceType("PRODUCT_INVOICE");
-        transaction.setCreatedAt(OffsetDateTime.now());
-        walletTransactionRepository.save(transaction);
-
-        // 9. Tạo product invoice
+        // 9. Tạo product invoice (Để có ID trước khi tạo WalletTransaction)
         ProductInvoice invoice = new ProductInvoice();
         invoice.setStudent(student);
         invoice.setProduct(product);
@@ -113,12 +108,24 @@ public class RedemptionServiceImpl implements RedemptionService {
         invoice.setStatus("PENDING");
         invoice.setVerificationCode(generateVerificationCode());
         invoice.setCreatedAt(OffsetDateTime.now());
-        productInvoiceRepository.save(invoice);
+        ProductInvoice savedInvoice = productInvoiceRepository.save(invoice);
+
+
+        // 8. Tạo wallet transaction
+        WalletTransaction transaction = new WalletTransaction();
+        transaction.setWallet(wallet);
+        transaction.setAmount(productCost.negate()); // Số âm vì trừ tiền
+        transaction.setTxnType("PRODUCT_REDEEM");
+        transaction.setReferenceType("PRODUCT_INVOICE");
+        transaction.setReferenceId(savedInvoice.getId()); // Gán ID của Invoice vừa tạo
+        transaction.setCreatedAt(OffsetDateTime.now());
+        walletTransactionRepository.save(transaction);
+
 
         log.info("Student {} redeemed product {} for {} coins. New balance: {}", 
                  student.getId(), productId, productCost, wallet.getBalance());
 
-        return convertToProductInvoiceResponseDTO(invoice);
+        return convertToProductInvoiceResponseDTO(savedInvoice);
     }
 
     @Override

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional; // <<< THÊM
 import org.springframework.data.domain.Page; // <<< THÊM
 import org.springframework.data.domain.Pageable;
+import java.util.UUID;
 
 @Service
 public class UniversityServiceImpl implements UniversityService {
@@ -57,7 +58,7 @@ public class UniversityServiceImpl implements UniversityService {
     // <<< THÊM PHƯƠNG THỨC CẬP NHẬT >>>
     @Override
     @Transactional
-    public UniversityResponseDTO updateUniversity(Long universityId, UniversityRequestDTO dto) {
+    public UniversityResponseDTO updateUniversity(UUID universityId, UniversityRequestDTO dto) {
         University university = universityRepository.findById(universityId)
                 .orElseThrow(() -> new ResourceNotFoundException("University not found with id: " + universityId));
 
@@ -84,7 +85,7 @@ public class UniversityServiceImpl implements UniversityService {
     // <<< THÊM PHƯƠNG THỨC XÓA >>>
     @Override
     @Transactional
-    public void deleteUniversity(Long universityId) {
+    public void deleteUniversity(UUID universityId) {
         if (!universityRepository.existsById(universityId)) {
             throw new ResourceNotFoundException("University not found with id: " + universityId);
         }

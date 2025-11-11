@@ -4,9 +4,10 @@ import com.example.demo.entity.EventCategory;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface EventCategoryRepository extends JpaRepository<EventCategory, Long> {
+public interface EventCategoryRepository extends JpaRepository<EventCategory, UUID> {
 
     Optional<EventCategory> findByName(String name);
 }

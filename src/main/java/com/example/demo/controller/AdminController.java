@@ -31,6 +31,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -143,7 +144,7 @@ public class AdminController {
     })
     @PutMapping("/event-categories/{id}")
     public ResponseEntity<EventCategoryResponseDTO> updateCategory(
-            @Parameter(description = "ID of the category to update") @PathVariable Long id,
+            @Parameter(description = "ID of the category to update") @PathVariable UUID id,
             @Valid @RequestBody EventCategoryRequestDTO requestDTO) {
         return ResponseEntity.ok(eventCategoryService.updateCategory(id, requestDTO));
     }
@@ -155,7 +156,7 @@ public class AdminController {
     })
     @DeleteMapping("/event-categories/{id}")
     public ResponseEntity<Void> deleteCategory(
-            @Parameter(description = "ID of the category to delete") @PathVariable Long id) {
+            @Parameter(description = "ID of the category to delete") @PathVariable UUID id) {
         eventCategoryService.deleteCategory(id);
         return ResponseEntity.noContent().build();
     }
@@ -191,7 +192,7 @@ public class AdminController {
     })
     @PatchMapping("/students/{id}/status") // <<< API MỚI
     public ResponseEntity<StudentResponseDTO> updateStudentStatus(
-            @Parameter(description = "ID of the student to update") @PathVariable Long id,
+            @Parameter(description = "ID of the student to update") @PathVariable UUID id,
             @Valid @RequestBody UserStatusUpdateDTO statusDTO) {
         
         StudentResponseDTO updatedStudent = studentService.updateStudentStatus(id, statusDTO);
@@ -206,7 +207,7 @@ public class AdminController {
     })
     @PatchMapping("/partners/{id}/status") // <<< API MỚI
     public ResponseEntity<PartnerResponseDTO> updatePartnerStatus(
-            @Parameter(description = "ID of the partner to update") @PathVariable Long id,
+            @Parameter(description = "ID of the partner to update") @PathVariable UUID id,
             @Valid @RequestBody UserStatusUpdateDTO statusDTO) {
         
         PartnerResponseDTO updatedPartner = partnerService.updatePartnerStatus(id, statusDTO);
@@ -226,7 +227,7 @@ public class AdminController {
     @ApiResponse(responseCode = "200", description = "University updated successfully")
     @PutMapping("/universities/{id}") // <<< API MỚI
     public ResponseEntity<UniversityResponseDTO> updateUniversity(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody UniversityRequestDTO dto) {
         UniversityResponseDTO updatedUniversity = universityService.updateUniversity(id, dto);
         return ResponseEntity.ok(updatedUniversity);
@@ -235,7 +236,7 @@ public class AdminController {
     @Operation(summary = "Admin deletes a university", description = "ADMIN only. Fails if any student is linked.")
     @ApiResponse(responseCode = "204", description = "University deleted successfully")
     @DeleteMapping("/universities/{id}") // <<< API MỚI
-    public ResponseEntity<Void> deleteUniversity(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteUniversity(@PathVariable UUID id) {
         universityService.deleteUniversity(id);
         return ResponseEntity.noContent().build();
     }
@@ -244,7 +245,7 @@ public class AdminController {
                description = "Retrieves a paginated list of all feedback. Can be filtered by eventId.")
     @GetMapping("/feedback")
     public ResponseEntity<PageResponseDTO<FeedbackResponseDTO>> getAllSystemFeedback(
-            @RequestParam(required = false) Long eventId,
+            @RequestParam(required = false) UUID eventId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt,desc") String sort) {
@@ -270,7 +271,7 @@ public class AdminController {
         @ApiResponse(responseCode = "409", description = "Event is not in PENDING status")
     })
     @PatchMapping("/events/{id}/approve")
-    public ResponseEntity<EventResponseDTO> approveEvent(@PathVariable Long id) {
+    public ResponseEntity<EventResponseDTO> approveEvent(@PathVariable UUID id) {
         EventResponseDTO approvedEvent = eventService.approveEvent(id);
         return ResponseEntity.ok(approvedEvent);
     }

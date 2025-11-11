@@ -6,11 +6,12 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Data
 public class EventCreateDTO {
     @NotNull
-    private Long partnerId;
+    private UUID partnerId;
 
     @NotBlank
     private String title;
@@ -24,11 +25,7 @@ public class EventCreateDTO {
     private OffsetDateTime endTime;
 
     private String location;
-    private Long categoryId;
-
-    // ==========================================================
-    // CÁC TRƯỜNG ĐÃ SỬA VÀ THÊM MỚI
-    // ==========================================================
+    private UUID categoryId;
 
     @NotNull(message = "Điểm cọc không được để trống.")
     @Min(value = 0, message = "Điểm cọc phải là số không âm.")
@@ -38,8 +35,5 @@ public class EventCreateDTO {
     @Min(value = 0, message = "Tổng điểm thưởng phải là số không âm.")
     private Integer totalRewardPoints;
     
-    // 3. GIỮ NGUYÊN Tổng Ngân sách Coin (Tài trợ cho sự kiện)
     private BigDecimal totalBudgetCoin;
-
-    // XÓA: private BigDecimal rewardPerCheckin; // Đã loại bỏ
 }

@@ -2,7 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.dto.response.ProductInvoiceResponseDTO;
 import com.example.demo.dto.response.WalletResponseDTO;
-
+import java.util.UUID;
 import java.util.List;
 
 public interface RedemptionService {
@@ -20,7 +20,7 @@ public interface RedemptionService {
      * @param productId ID of the product to redeem
      * @return ProductInvoiceResponseDTO with invoice details
      */
-    ProductInvoiceResponseDTO redeemProduct(String cognitoSub, Long productId);
+    ProductInvoiceResponseDTO redeemProduct(String cognitoSub, UUID productId);
 
     /**
      * Get the list of invoices for redeemed products by the student

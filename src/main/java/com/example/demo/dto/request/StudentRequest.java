@@ -3,11 +3,12 @@ package com.example.demo.dto.request;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import java.util.UUID;
 
 @Data
 public class StudentRequest {
     @NotNull(message = "University ID is required")
-    private Long universityId;
+    private UUID universityId;
     
     @NotNull(message = "Full name is required")
     @Size(max = 200, message = "Full name must not exceed 200 characters")

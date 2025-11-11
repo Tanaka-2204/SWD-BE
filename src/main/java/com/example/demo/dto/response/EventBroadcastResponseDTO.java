@@ -2,13 +2,14 @@ package com.example.demo.dto.response;
 
 import lombok.Data;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Data
 public class EventBroadcastResponseDTO {
 
-    private Long id;
+    private UUID id;
 
-    private Long eventId;
+    private UUID eventId;
 
     private String eventTitle;
 
@@ -16,5 +17,5 @@ public class EventBroadcastResponseDTO {
 
     private OffsetDateTime sentAt;
 
-    //private Long recipientCount; 
+    //private UUID recipientCount; 
 }

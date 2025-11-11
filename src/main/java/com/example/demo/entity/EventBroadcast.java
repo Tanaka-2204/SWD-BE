@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-
+import java.util.UUID;
 import java.time.OffsetDateTime;
 
 @Getter
@@ -15,9 +15,9 @@ import java.time.OffsetDateTime;
 public class EventBroadcast {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // THAY THẾ CÁI NÀY
+    @GeneratedValue(strategy = GenerationType.UUID) // SỬA ĐỔI CHIẾN LƯỢC
     @Column(name = "broadcast_id", nullable = false)
-    private Long id;
+    private UUID id;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

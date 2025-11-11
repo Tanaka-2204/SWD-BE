@@ -39,6 +39,7 @@ import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.stream.Collectors;
 import java.util.Optional;
+import java.util.UUID; // <<< THÊM IMPORT
 
 @Service
 public class EventServiceImpl implements EventService {
@@ -71,13 +72,13 @@ public class EventServiceImpl implements EventService {
     @Transactional
     public EventResponseDTO createEvent(AuthPrincipal principal, EventCreateDTO requestDTO) {
         
-        // 1. Xác định Partner (Giống logic StudentServiceImpl)
-        Long partnerId = getPartnerIdFromPrincipal(principal, requestDTO);
+        // 1. Xác định Partner
+        UUID partnerId = getPartnerIdFromPrincipal(principal, requestDTO); // SỬA: Long -> UUID
 
-        Partner partner = partnerRepository.findById(partnerId)
+        Partner partner = partnerRepository.findById(partnerId) // SỬA: Long -> UUID
                 .orElseThrow(() -> new ResourceNotFoundException("Partner not found with id: " + partnerId));
         
-        EventCategory category = categoryRepository.findById(requestDTO.getCategoryId())
+        EventCategory category = categoryRepository.findById(requestDTO.getCategoryId()) // SỬA: Long -> UUID
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + requestDTO.getCategoryId()));
 
         BigDecimal totalBudgetCoin = requestDTO.getTotalBudgetCoin();
@@ -92,7 +93,6 @@ public class EventServiceImpl implements EventService {
         }
 
         // 3. TẠO VÍ SỰ KIỆN (TRONG BỘ NHỚ)
-        // Ví này sẽ được tự động lưu khi lưu Event (nhờ CascadeType.ALL)
         Wallet eventWallet = new Wallet();
         eventWallet.setBalance(totalBudgetCoin); // <<< NẠP SẴN TIỀN
         eventWallet.setCurrency("COIN");
@@ -165,7 +165,7 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public Page<EventResponseDTO> getEventHistoryByStudent(Long studentId, Pageable pageable) {
+    public Page<EventResponseDTO> getEventHistoryByStudent(UUID studentId, Pageable pageable) { // SỬA: Long -> UUID
         // Tìm các bản ghi checkin của student (đã đăng ký)
         Page<Checkin> checkins = checkinRepository.findByStudentId(studentId, pageable);
         return checkins.map(Checkin::getEvent).map(this::convertToDTO);
@@ -174,7 +174,7 @@ public class EventServiceImpl implements EventService {
     // --- READ ---
     @Override
     @Transactional(readOnly = true)
-    public EventResponseDTO getEventById(Long eventId) {
+    public EventResponseDTO getEventById(UUID eventId) { // SỬA: Long -> UUID
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
         return convertToDTO(event);
@@ -190,7 +190,7 @@ public class EventServiceImpl implements EventService {
     // --- UPDATE ---
     @Override
     @Transactional
-    public EventResponseDTO updateEvent(Long eventId, EventUpdateDTO requestDTO, AuthPrincipal principal) {
+    public EventResponseDTO updateEvent(UUID eventId, EventUpdateDTO requestDTO, AuthPrincipal principal) { // SỬA: Long -> UUID
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
 
@@ -256,7 +256,7 @@ public class EventServiceImpl implements EventService {
     // --- DELETE ---
     @Override
     @Transactional
-    public void deleteEvent(Long eventId, AuthPrincipal principal) {
+    public void deleteEvent(UUID eventId, AuthPrincipal principal) { // SỬA: Long -> UUID
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
         
@@ -269,7 +269,7 @@ public class EventServiceImpl implements EventService {
     // --- BUSINESS LOGIC IMPLEMENTATIONS ---
     @Override
     @Transactional(readOnly = true)
-    public Page<EventResponseDTO> getEventsByPartner(Long partnerId, Pageable pageable) {
+    public Page<EventResponseDTO> getEventsByPartner(UUID partnerId, Pageable pageable) { // SỬA: Long -> UUID
         if (!partnerRepository.existsById(partnerId)) {
             throw new ResourceNotFoundException("Partner not found with id: " + partnerId);
         }
@@ -278,7 +278,7 @@ public class EventServiceImpl implements EventService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<EventResponseDTO> getEventsByCategory(Long categoryId) {
+    public List<EventResponseDTO> getEventsByCategory(UUID categoryId) { // SỬA: Long -> UUID
         if (!categoryRepository.existsById(categoryId)) {
             throw new ResourceNotFoundException("EventCategory not found with id: " + categoryId);
         }
@@ -303,7 +303,7 @@ public class EventServiceImpl implements EventService {
     // ==========================================================
     @Override
     @Transactional
-    public EventResponseDTO finalizeEvent(Long eventId) {
+    public EventResponseDTO finalizeEvent(UUID eventId) { // SỬA: Long -> UUID
         // 1. Tìm sự kiện
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
@@ -400,7 +400,7 @@ public class EventServiceImpl implements EventService {
 
     @Override
     @Transactional
-    public EventResponseDTO finalizeEvent(Long eventId, AuthPrincipal principal) {
+    public EventResponseDTO finalizeEvent(UUID eventId, AuthPrincipal principal) { // SỬA: Long -> UUID
         // 1. Tìm sự kiện
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
@@ -409,7 +409,7 @@ public class EventServiceImpl implements EventService {
         checkEventOwnership(event, principal);
 
         // 2. Kiểm tra trạng thái
-        if ("FINISHED".equals(event.getStatus())) {
+        if ("FINALIZED".equals(event.getStatus())) {
             throw new DataIntegrityViolationException("Event has already been finalized.");
         }
 
@@ -500,7 +500,7 @@ public class EventServiceImpl implements EventService {
 
     @Override
     @Transactional
-    public EventResponseDTO approveEvent(Long eventId) {
+    public EventResponseDTO approveEvent(UUID eventId) { // SỬA: Long -> UUID
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
 
@@ -530,7 +530,7 @@ public class EventServiceImpl implements EventService {
 
         // 2. Nếu là Partner, kiểm tra ID
         if (principal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PARTNERS"))) {
-            Long partnerIdFromToken = principal.getPartnerId();
+            UUID partnerIdFromToken = principal.getPartnerId(); // SỬA: Long -> UUID
             if (partnerIdFromToken == null) {
                 throw new ForbiddenException("Partner ID not found in token.");
             }
@@ -544,8 +544,8 @@ public class EventServiceImpl implements EventService {
     }
 
     // (Hàm helper để lấy PartnerId từ Principal)
-    private Long getPartnerIdFromPrincipal(AuthPrincipal principal, EventCreateDTO requestDTO) {
-        Long partnerId = principal.getPartnerId();
+    private UUID getPartnerIdFromPrincipal(AuthPrincipal principal, EventCreateDTO requestDTO) { // SỬA: Long -> UUID
+        UUID partnerId = principal.getPartnerId(); // SỬA: Long -> UUID
         
         if (principal.isAdmin()) {
             // Nếu là Admin, cho phép tạo hộ

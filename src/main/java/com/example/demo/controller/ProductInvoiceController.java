@@ -16,7 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
+import java.util.UUID;
 import java.util.Map;
 
 @RestController
@@ -37,7 +37,7 @@ public class ProductInvoiceController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get invoice detail")
-    public ResponseEntity<ProductInvoiceResponseDTO> getInvoiceById(@PathVariable Long id) {
+    public ResponseEntity<ProductInvoiceResponseDTO> getInvoiceById(@PathVariable UUID id) {
         ProductInvoiceResponseDTO invoice = productInvoiceService.getInvoiceById(id);
         return ResponseEntity.ok(invoice);
     }
@@ -45,7 +45,7 @@ public class ProductInvoiceController {
     @GetMapping("/students/{studentId}")
     @Operation(summary = "Get student redeem history")
     public ResponseEntity<Map<String, Object>> getStudentInvoices(
-            @PathVariable Long studentId,
+            @PathVariable UUID studentId,
             @Parameter(description = "Filter by status (PENDING, DELIVERED, CANCELLED)") @RequestParam(required = false) String status,
             @Parameter(description = "Sort by (createdAt, totalCost)") @RequestParam(defaultValue = "createdAt") String sortBy,
             @Parameter(description = "Sort order (asc, desc)") @RequestParam(defaultValue = "desc") String order,
@@ -67,7 +67,7 @@ public class ProductInvoiceController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('PARTNERS')")
     @Operation(summary = "Confirm delivery - Change invoice status from PENDING to DELIVERED (ADMIN/PARTNERS only)")
     public ResponseEntity<ProductInvoiceResponseDTO> confirmDelivery(
-            @Parameter(description = "ID of the invoice to confirm delivery") @PathVariable Long id,
+            @Parameter(description = "ID of the invoice to confirm delivery") @PathVariable UUID id,
             @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal) {
         
         // Lấy thông tin người xác nhận từ principal
@@ -86,7 +86,7 @@ public class ProductInvoiceController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Cancel invoice - Refund balance and restore stock (All authenticated users)")
     public ResponseEntity<ProductInvoiceResponseDTO> cancelInvoice(
-            @Parameter(description = "ID of the invoice to cancel") @PathVariable Long id,
+            @Parameter(description = "ID of the invoice to cancel") @PathVariable UUID id,
             @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal) {
         
         // Gọi service để hủy đơn hàng (hoàn tiền và restore stock)

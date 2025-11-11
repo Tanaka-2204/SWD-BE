@@ -2,20 +2,18 @@ package com.example.demo.dto.response;
 
 import lombok.Data;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
-/**
- * DTO trả về thông tin chi tiết của một feedback.
- */
 @Data
 public class FeedbackResponseDTO {
 
-    private Long id;
+    private UUID id;
 
-    private Long studentId;
+    private UUID studentId;
 
     private String studentName;
 
-    private Long eventId;
+    private UUID eventId;
 
     private String eventTitle;
 

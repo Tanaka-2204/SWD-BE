@@ -37,6 +37,7 @@ import org.springframework.beans.factory.annotation.Value;
 import java.math.BigDecimal;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.util.UUID; // <<< THÊM IMPORT
 
 @Service
 public class PartnerServiceImpl implements PartnerService {
@@ -50,7 +51,6 @@ public class PartnerServiceImpl implements PartnerService {
     @Value("${AWS_COGNITO_USER_POOL_ID}") // <<< GIỮ LẠI KHAI BÁO NÀY
     private String userPoolId;
 
-    // <<< GIỮ LẠI CONSTRUCTOR NÀY (Đã sửa lỗi) >>>
     public PartnerServiceImpl(PartnerRepository partnerRepository,
             WalletRepository walletRepository,
             @Value("${AWS_ACCESS_KEY_ID}") String accessKey,
@@ -145,7 +145,6 @@ public class PartnerServiceImpl implements PartnerService {
 
             } catch (UserNotFoundException notFoundE) {
                 // Mâu thuẫn logic: "Exists" xong lại "Not Found"
-                // Log này (10:01:57) của bạn đã xảy ra ở đây.
                 logger.error("Cognito logic error: User {} reported 'Exists' but then 'Not Found'. {}",
                         partnerCognitoUsername, notFoundE.getMessage());
                 throw new RuntimeException("Cognito state contradiction. Please check user status.", notFoundE);
@@ -154,8 +153,6 @@ public class PartnerServiceImpl implements PartnerService {
                 // Lỗi khi thêm vào group (ví dụ: user đã ở trong group)
                 logger.error("Failed to add existing Cognito user {} to group PARTNERS: {}", partnerCognitoUsername,
                         addGroupError.getMessage());
-                // (Có thể bỏ qua lỗi này nếu user đã ở trong group, nhưng để an toàn, chúng ta
-                // ném lỗi)
                 throw new RuntimeException("Failed to assign partner role in Cognito for existing user.",
                         addGroupError);
             }
@@ -192,7 +189,7 @@ public class PartnerServiceImpl implements PartnerService {
         partner.setOrganizationType(requestDTO.getOrganizationType());
         partner.setContactEmail(requestDTO.getContactEmail());
         partner.setContactPhone(requestDTO.getContactPhone());
-        partner.setCognitoSub(createdCognitoSub); // <<< SẼ LUÔN CÓ GIÁ TRỊ
+        partner.setCognitoSub(createdCognitoSub); 
 
         Wallet wallet = new Wallet();
         wallet.setOwnerType("PARTNER");
@@ -214,7 +211,7 @@ public class PartnerServiceImpl implements PartnerService {
     // --- Các phương thức GET, UPDATE, DELETE giữ nguyên ---
     @Override
     @Transactional(readOnly = true)
-    public PartnerResponseDTO getPartnerById(Long partnerId) {
+    public PartnerResponseDTO getPartnerById(UUID partnerId) { // SỬA: Long -> UUID
         Partner partner = partnerRepository.findById(partnerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Partner not found with id: " + partnerId));
         return convertToDTO(partner);
@@ -237,7 +234,7 @@ public class PartnerServiceImpl implements PartnerService {
 
     @Override
     @Transactional
-    public PartnerResponseDTO updatePartner(Long partnerId, PartnerRequestDTO requestDTO) {
+    public PartnerResponseDTO updatePartner(UUID partnerId, PartnerRequestDTO requestDTO) { // SỬA: Long -> UUID
         Partner partner = partnerRepository.findById(partnerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Partner not found with id: " + partnerId));
 
@@ -263,7 +260,7 @@ public class PartnerServiceImpl implements PartnerService {
 
     @Override
     @Transactional
-    public PartnerResponseDTO updatePartnerStatus(Long partnerId, UserStatusUpdateDTO dto) {
+    public PartnerResponseDTO updatePartnerStatus(UUID partnerId, UserStatusUpdateDTO dto) { // SỬA: Long -> UUID
         logger.info("Admin updating status for partnerId: {} to {}", partnerId, dto.getStatus());
 
         Partner partner = partnerRepository.findById(partnerId)
@@ -284,13 +281,10 @@ public class PartnerServiceImpl implements PartnerService {
 
     @Override
     @Transactional
-    public void deletePartner(Long partnerId) {
+    public void deletePartner(UUID partnerId) { // SỬA: Long -> UUID
         if (!partnerRepository.existsById(partnerId)) {
             throw new ResourceNotFoundException("Partner not found with id: " + partnerId);
         }
-        // TODO: Thêm logic kiểm tra ràng buộc trước khi xóa (ví dụ: còn sự kiện nào
-        // không?)
-        // TODO: Cân nhắc việc xóa user Cognito tương ứng
         partnerRepository.deleteById(partnerId);
         logger.info("Deleted partner with ID: {}", partnerId);
     }

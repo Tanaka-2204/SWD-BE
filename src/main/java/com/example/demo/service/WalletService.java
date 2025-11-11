@@ -9,17 +9,17 @@ import com.example.demo.dto.request.WalletTopupRequestDTO;
 import com.example.demo.dto.request.WalletTransferRequestDTO;
 import com.example.demo.dto.response.WalletResponseDTO;
 import com.example.demo.dto.response.WalletTransactionResponseDTO;
-
+import java.util.UUID;
 import java.math.BigDecimal;
 
 public interface WalletService {
 
     // --- READ OPERATIONS ---
-    WalletResponseDTO getWalletById(Long walletId);
+    WalletResponseDTO getWalletById(UUID walletId);
 
-    Page<WalletTransactionResponseDTO> getTransactionHistory(Long ownerId, String ownerType, Pageable pageable);
+    Page<WalletTransactionResponseDTO> getTransactionHistory(UUID ownerId, String ownerType, Pageable pageable);
 
-    WalletResponseDTO getWalletByOwner(String ownerType, Long ownerId);
+    WalletResponseDTO getWalletByOwner(String ownerType, UUID ownerId);
 
     Page<WalletTransactionResponseDTO> getTransactionHistoryForUser(AuthPrincipal principal, Pageable pageable);
 
@@ -32,9 +32,9 @@ public interface WalletService {
 
     WalletTransactionResponseDTO rollbackTransaction(WalletRollbackRequestDTO rollbackRequest);
 
-    void deductBalance(String ownerType, Long ownerId, BigDecimal amount, String referenceType, Long referenceId);
+    void deductBalance(String ownerType, UUID ownerId, BigDecimal amount, String referenceType, UUID referenceId);
 
-    void refundBalance(String ownerType, Long ownerId, BigDecimal amount, String referenceType, Long referenceId);
+    void refundBalance(String ownerType, UUID ownerId, BigDecimal amount, String referenceType, UUID referenceId);
 
     Page<WalletTransactionResponseDTO> getAllTransactions(Pageable pageable);
 }

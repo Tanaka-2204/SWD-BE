@@ -7,17 +7,17 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
+import java.util.UUID;
 import java.util.List;
 
 @Repository
-public interface ProductInvoiceRepository extends JpaRepository<ProductInvoice, Long> {
+public interface ProductInvoiceRepository extends JpaRepository<ProductInvoice, UUID> {
     
-    List<ProductInvoice> findByStudentIdOrderByCreatedAtDesc(Long studentId);
+    List<ProductInvoice> findByStudentIdOrderByCreatedAtDesc(UUID studentId);
 
     @Query("SELECT pi FROM ProductInvoice pi WHERE pi.student.id = :studentId " +
            "AND (:status IS NULL OR pi.status = :status)")
-    Page<ProductInvoice> findInvoicesByStudent(@Param("studentId") Long studentId, 
+    Page<ProductInvoice> findInvoicesByStudent(@Param("studentId") UUID studentId, 
                                                 @Param("status") String status, 
                                                 Pageable pageable);
 
