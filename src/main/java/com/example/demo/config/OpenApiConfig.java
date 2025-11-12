@@ -33,8 +33,8 @@ import org.springframework.context.annotation.Configuration;
             description = "Local Development Server"
         ),
         @Server(
-            url = "https://brachycranic-noncorrelative-joya.ngrok-free.dev",
-            description = "ngrok public"
+            url = "https://loyalty-system-be.onrender.com",
+            description = "Render public"
         )
     }
     // <<< TÔI ĐÃ XÓA "security = @SecurityRequirement(name = "bearerAuth")" KHỎI ĐÂY >>>
