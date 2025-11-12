@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -28,4 +29,6 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
      * Finds all transactions for admin monitoring, ordered by creation date descending.
      */
     Page<WalletTransaction> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    List<WalletTransaction> findByWalletIdOrCounterpartyId(UUID walletId, UUID counterpartyId);
 }

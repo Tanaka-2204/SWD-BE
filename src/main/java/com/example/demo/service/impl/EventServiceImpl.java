@@ -8,6 +8,7 @@ import com.example.demo.dto.response.EventResponseDTO;
 import com.example.demo.entity.Checkin;
 import com.example.demo.entity.Event;
 import com.example.demo.entity.EventCategory;
+import com.example.demo.entity.EventFunding;
 import com.example.demo.entity.Partner;
 import com.example.demo.entity.Student;
 import com.example.demo.entity.Wallet;
@@ -19,6 +20,7 @@ import com.example.demo.repository.EventRepository;
 import com.example.demo.repository.PartnerRepository;
 import com.example.demo.repository.WalletTransactionRepository;
 import com.example.demo.repository.WalletRepository;
+import com.example.demo.repository.EventFundingRepository;
 import com.example.demo.repository.CheckinRepository;
 import com.example.demo.service.EventService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +34,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.data.jpa.domain.Specification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.ArrayList; 
+import java.util.ArrayList;
 import java.util.List;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -53,12 +55,13 @@ public class EventServiceImpl implements EventService {
     @Autowired
     private CheckinRepository checkinRepository;
     private final WalletRepository walletRepository;
+    private final EventFundingRepository eventFundingRepository;
 
     public EventServiceImpl(EventRepository eventRepository,
-                            PartnerRepository partnerRepository,
-                            EventCategoryRepository categoryRepository, JwtAuthenticationConverter jwtAuthenticationConverter,
-                            WalletTransactionRepository transactionRepository, CheckinRepository checkinRepository,
-                            WalletRepository walletRepository) {
+            PartnerRepository partnerRepository,
+            EventCategoryRepository categoryRepository, JwtAuthenticationConverter jwtAuthenticationConverter,
+            WalletTransactionRepository transactionRepository, CheckinRepository checkinRepository,
+            WalletRepository walletRepository, EventFundingRepository eventFundingRepository) {
         this.eventRepository = eventRepository;
         this.partnerRepository = partnerRepository;
         this.categoryRepository = categoryRepository;
@@ -66,20 +69,22 @@ public class EventServiceImpl implements EventService {
         this.transactionRepository = transactionRepository;
         this.checkinRepository = checkinRepository;
         this.walletRepository = walletRepository;
+        this.eventFundingRepository = eventFundingRepository;
     }
-    
+
     @Override
     @Transactional
     public EventResponseDTO createEvent(AuthPrincipal principal, EventCreateDTO requestDTO) {
-        
+
         // 1. Xác định Partner
         UUID partnerId = getPartnerIdFromPrincipal(principal, requestDTO); // SỬA: Long -> UUID
 
         Partner partner = partnerRepository.findById(partnerId) // SỬA: Long -> UUID
                 .orElseThrow(() -> new ResourceNotFoundException("Partner not found with id: " + partnerId));
-        
+
         EventCategory category = categoryRepository.findById(requestDTO.getCategoryId()) // SỬA: Long -> UUID
-                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + requestDTO.getCategoryId()));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Category not found with id: " + requestDTO.getCategoryId()));
 
         BigDecimal totalBudgetCoin = requestDTO.getTotalBudgetCoin();
 
@@ -98,7 +103,7 @@ public class EventServiceImpl implements EventService {
         eventWallet.setCurrency("COIN");
         eventWallet.setOwnerType("EVENT");
         // (OwnerId sẽ được cập nhật sau khi Event có ID)
-        
+
         // 4. TẠO SỰ KIỆN (TRONG BỘ NHỚ)
         Event event = new Event();
         event.setPartner(partner);
@@ -109,12 +114,12 @@ public class EventServiceImpl implements EventService {
         event.setStartTime(requestDTO.getStartTime());
         event.setEndTime(requestDTO.getEndTime());
         event.setStatus("DRAFT");
-        
+
         event.setPointCostToRegister(requestDTO.getPointCostToRegister());
         event.setTotalRewardPoints(requestDTO.getTotalRewardPoints());
         event.setTotalBudgetCoin(totalBudgetCoin);
         event.setWallet(eventWallet); // <<< Liên kết Ví vào Sự kiện
-        
+
         // Tính toán MaxAttendees
         int maxAttendees = 0;
         if (event.getTotalRewardPoints() != null && event.getTotalRewardPoints() > 0) {
@@ -153,10 +158,10 @@ public class EventServiceImpl implements EventService {
         creditTx.setTxnType("EVENT_FUNDING");
         creditTx.setReferenceType("PARTNER");
         creditTx.setReferenceId(partner.getId());
-        
+
         transactionRepository.saveAll(List.of(debitTx, creditTx));
         // ==========================================================
-        
+
         logger.info("Event {} created (DRAFT). {} coins transferred from Partner {}.",
                 savedEvent.getId(), totalBudgetCoin, partner.getId());
 
@@ -190,7 +195,8 @@ public class EventServiceImpl implements EventService {
     // --- UPDATE ---
     @Override
     @Transactional
-    public EventResponseDTO updateEvent(UUID eventId, EventUpdateDTO requestDTO, AuthPrincipal principal) { // SỬA: Long -> UUID
+    public EventResponseDTO updateEvent(UUID eventId, EventUpdateDTO requestDTO, AuthPrincipal principal) { // SỬA: Long
+                                                                                                            // -> UUID
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
 
@@ -223,7 +229,7 @@ public class EventServiceImpl implements EventService {
         }
         if (requestDTO.getTotalRewardPoints() != null) {
             event.setTotalRewardPoints(requestDTO.getTotalRewardPoints());
-            rewardChanged = true; 
+            rewardChanged = true;
         }
         if (requestDTO.getCategoryId() != null) {
             EventCategory category = categoryRepository.findById(requestDTO.getCategoryId())
@@ -233,11 +239,11 @@ public class EventServiceImpl implements EventService {
         }
 
         // Tính toán lại MaxAttendees
-        if (rewardChanged || requestDTO.getTotalBudgetCoin() != null) { 
+        if (rewardChanged || requestDTO.getTotalBudgetCoin() != null) {
             if (requestDTO.getTotalBudgetCoin() != null) {
                 event.setTotalBudgetCoin(requestDTO.getTotalBudgetCoin());
             }
-            BigDecimal totalBudget = event.getTotalBudgetCoin(); 
+            BigDecimal totalBudget = event.getTotalBudgetCoin();
             Integer totalRewardPoints = event.getTotalRewardPoints();
             BigDecimal rewardPerAttendee = totalRewardPoints != null ? new BigDecimal(totalRewardPoints)
                     : BigDecimal.ZERO;
@@ -248,7 +254,7 @@ public class EventServiceImpl implements EventService {
                 event.setMaxAttendees(0);
             }
         }
-        
+
         Event savedEvent = eventRepository.save(event);
         return convertToDTO(savedEvent);
     }
@@ -256,14 +262,47 @@ public class EventServiceImpl implements EventService {
     // --- DELETE ---
     @Override
     @Transactional
-    public void deleteEvent(UUID eventId, AuthPrincipal principal) { // SỬA: Long -> UUID
+    public void deleteEvent(UUID eventId, AuthPrincipal principal) {
+
+        // 1. Tìm sự kiện
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
-        
-        // <<< LOGIC BẢO MẬT: Kiểm tra quyền sở hữu
+
+        // 2. KIỂM TRA ĐIỀU KIỆN 1: Quyền sở hữu (Giữ nguyên)
         checkEventOwnership(event, principal);
-        
-        eventRepository.deleteById(eventId);
+
+        // 3. KIỂM TRA ĐIỀU KIỆN 2: Trạng thái "DRAFT"
+        if (!"DRAFT".equals(event.getStatus())) {
+            throw new ForbiddenException("Cannot delete event. Deletion is only allowed for events in 'DRAFT' status.");
+        }
+
+        // 4. XỬ LÝ LỖI KHÓA NGOẠI (Xóa các bản ghi con)
+
+        Wallet eventWallet = event.getWallet();
+
+        // 4a. Xóa các bản ghi EventFunding (nếu có)
+        // (Giả sử bạn đã inject EventFundingRepository)
+        List<EventFunding> fundings = eventFundingRepository.findAllByEventId(eventId);
+        if (!fundings.isEmpty()) {
+            logger.info("Deleting {} funding records for DRAFT event {}", fundings.size(), eventId);
+            eventFundingRepository.deleteAll(fundings);
+        }
+
+        if (eventWallet != null) {
+            // 4b. Xóa các bản ghi WalletTransaction (Gốc rễ của lỗi)
+            // LƯU Ý: Phải tìm cả giao dịch đi (wallet_id) và giao dịch đến
+            // (counterparty_id)
+            List<WalletTransaction> transactions = transactionRepository
+                    .findByWalletIdOrCounterpartyId(eventWallet.getId(), eventWallet.getId());
+
+            if (!transactions.isEmpty()) {
+                logger.info("Deleting {} transactions associated with DRAFT event wallet {}", transactions.size(),
+                        eventWallet.getId());
+                transactionRepository.deleteAll(transactions);
+            }
+        }
+        logger.info("All constraints cleared. Deleting DRAFT event {} and its wallet.", eventId);
+        eventRepository.delete(event);
     }
 
     // --- BUSINESS LOGIC IMPLEMENTATIONS ---
@@ -346,7 +385,7 @@ public class EventServiceImpl implements EventService {
         if (eventWallet.getBalance().compareTo(requiredBudget) < 0) {
             throw new ForbiddenException(
                     "Event wallet has insufficient funds to finalize rewards. Required: " + requiredBudget
-                    + ", Available: " + eventWallet.getBalance());
+                            + ", Available: " + eventWallet.getBalance());
         }
 
         // 7. Thực hiện giao dịch (Event Wallet -> Student Wallet)
@@ -446,7 +485,7 @@ public class EventServiceImpl implements EventService {
         if (eventWallet.getBalance().compareTo(requiredBudget) < 0) {
             throw new ForbiddenException(
                     "Event wallet has insufficient funds to finalize rewards. Required: " + requiredBudget
-                    + ", Available: " + eventWallet.getBalance());
+                            + ", Available: " + eventWallet.getBalance());
         }
 
         // 7. Thực hiện giao dịch (Event Wallet -> Student Wallet)
@@ -538,7 +577,7 @@ public class EventServiceImpl implements EventService {
                 return; // Đúng chủ sở hữu
             }
         }
-        
+
         // 3. Nếu không phải cả hai, từ chối
         throw new ForbiddenException("You do not have permission to perform this action on this event.");
     }
@@ -546,7 +585,7 @@ public class EventServiceImpl implements EventService {
     // (Hàm helper để lấy PartnerId từ Principal)
     private UUID getPartnerIdFromPrincipal(AuthPrincipal principal, EventCreateDTO requestDTO) { // SỬA: Long -> UUID
         UUID partnerId = principal.getPartnerId(); // SỬA: Long -> UUID
-        
+
         if (principal.isAdmin()) {
             // Nếu là Admin, cho phép tạo hộ
             if (requestDTO.getPartnerId() == null) {
@@ -554,12 +593,13 @@ public class EventServiceImpl implements EventService {
             }
             return requestDTO.getPartnerId();
         }
-        
+
         if (partnerId == null) {
-            // Nếu là Partner (hoặc vai trò khác) nhưng không có partnerId (chưa hoàn tất hồ sơ)
+            // Nếu là Partner (hoặc vai trò khác) nhưng không có partnerId (chưa hoàn tất hồ
+            // sơ)
             throw new ForbiddenException("User does not have a Partner ID. Please complete Partner profile.");
         }
-        
+
         return partnerId;
     }
 
