@@ -24,4 +24,7 @@ public interface EventRepository extends JpaRepository<Event, UUID>, JpaSpecific
     List<Event> findOngoingEvents(OffsetDateTime currentTime);
 
     Page<Event> findByTitleContainingIgnoreCase(String keyword, Pageable pageable);
+
+    @Query("SELECT e.partner.name, COUNT(e.id) FROM Event e GROUP BY e.partner.name ORDER BY COUNT(e.id) DESC")
+    java.util.List<Object[]> findPartnerActivity();
 }

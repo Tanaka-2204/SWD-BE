@@ -12,6 +12,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.bind.annotation.RequestPart;
 import java.util.UUID;
 import java.util.List;
 import java.util.Map;
@@ -55,10 +58,12 @@ public class ProductController {
         return ResponseEntity.ok(product);
     }
 
-    @PostMapping
-    @Operation(summary = "Create new product (Admin)")
-    public ResponseEntity<ProductResponseDTO> createProduct(@Valid @RequestBody ProductRequestDTO request) {
-        ProductResponseDTO product = productService.createProduct(request);
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Create new product (Admin) - supports image upload")
+    public ResponseEntity<ProductResponseDTO> createProduct(
+            @RequestPart("data") @Valid ProductRequestDTO request,
+            @RequestPart(value = "image", required = false) MultipartFile image) {
+        ProductResponseDTO product = productService.createProduct(request, image);
         return ResponseEntity.ok(product);
     }
 
