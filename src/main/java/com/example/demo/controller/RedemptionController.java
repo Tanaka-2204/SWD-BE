@@ -18,7 +18,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/redemptions")
-@Tag(name = "4. Store & Redemption")
+@Tag(name = "5. Store & Redemption")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
 public class RedemptionController {

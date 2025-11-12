@@ -18,7 +18,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/event-categories")
-@Tag(name = "6. Public Data")
+@Tag(name = "7. Public Data")
 public class EventCategoryController {
 
     private final EventCategoryService eventCategoryService;

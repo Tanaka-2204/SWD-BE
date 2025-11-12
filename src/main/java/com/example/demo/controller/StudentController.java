@@ -4,7 +4,7 @@ import com.example.demo.config.AuthPrincipal;
 import com.example.demo.dto.request.StudentProfileCompletionDTO;
 import com.example.demo.dto.request.StudentProfileUpdateDTO;
 import com.example.demo.dto.response.StudentResponseDTO;
-import com.example.demo.dto.response.EventResponseDTO; // <<< THÊM
+import com.example.demo.dto.response.EventResponseDTO; 
 import com.example.demo.dto.response.PageResponseDTO;
 import com.example.demo.service.StudentService;
 import com.example.demo.service.EventService;
@@ -23,10 +23,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.data.domain.Page; // <<< THÊM
-import org.springframework.data.domain.PageRequest; // <<< THÊM
-import org.springframework.data.domain.Pageable; // <<< THÊM
+import org.springframework.data.domain.Page; 
+import org.springframework.data.domain.PageRequest; 
+import org.springframework.data.domain.Pageable; 
 import org.springframework.data.domain.Sort;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/students")
@@ -43,52 +44,57 @@ public class StudentController {
     }
 
     @Operation(summary = "Complete student profile (Phone & Avatar)",
-               description = "Called once after Cognito registration. " + 
-                             "Uses fullName and university from JWT, and phone/avatar from request body.")
+               description = "Called once after Cognito registration. Endpoint này nhận 'multipart/form-data'.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Profile created successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid data (e.g., phone format)"),
             @ApiResponse(responseCode = "404", description = "University code from JWT not found in DB"),
             @ApiResponse(responseCode = "409", description = "Profile already exists or phone number is taken")
     })
-    // ==========================================================
-    // <<< SỬA LỖI 1 (Lỗi 404): Thêm "/me" vào đường dẫn
-    // ==========================================================
     @PostMapping("/me/complete-profile")
     public ResponseEntity<StudentResponseDTO> completeProfile(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal,
-            @Valid @RequestBody StudentProfileCompletionDTO completionDTO) {
+            
+            // --- SỬA LỖI QUAN TRỌNG TẠI ĐÂY ---
+            // Đổi từ @RequestBody (JSON) sang @ModelAttribute (Form-data)
+            @Valid @ModelAttribute StudentProfileCompletionDTO completionDTO) {
+            // ---------------------------------
 
-        // <<< LẤY RAW ACCESS TOKEN TỪ SECURITY CONTEXT
+        // Lấy raw access token
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
              throw new IllegalStateException("Authentication is not a JWT Token");
         }
         String rawAccessToken = ((JwtAuthenticationToken) authentication).getToken().getTokenValue();
 
-        // <<< GỌI SERVICE VỚI TOKEN THÔ
+        // Service đã được sửa để nhận DTO (chứa MultipartFile)
         StudentResponseDTO newStudent = studentService.completeProfile(
             principal, 
-            rawAccessToken, // <<< TRUYỀN TOKEN VÀO
+            rawAccessToken, 
             completionDTO
         );
         return new ResponseEntity<>(newStudent, HttpStatus.CREATED);
     }
 
-    @Operation(summary = "Update current student's profile", description = "Allows an authenticated student to update their own profile information (e.g., name, phone number, avatar). Email cannot be changed here.")
+    @Operation(summary = "Update current student's profile", 
+               description = "Allows student to update info. Endpoint này nhận 'multipart/form-data'.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Profile updated successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid input data"),
-            @ApiResponse(responseCode = "404", description = "Student profile not found for the authenticated user"),
-            @ApiResponse(responseCode = "409", description = "Phone number is already in use by another student")
+            @ApiResponse(responseCode = "404", description = "Student profile not found"),
+            @ApiResponse(responseCode = "409", description = "Phone number is already in use")
     })
     @PutMapping("/me")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<StudentResponseDTO> updateMyProfile(
-            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal, // <<< SỬA Ở ĐÂY
-            @Valid @RequestBody StudentProfileUpdateDTO updateDTO) {
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal,
+            
+            // --- SỬA LỖI QUAN TRỌNG TẠI ĐÂY ---
+            // Đổi từ @RequestBody (JSON) sang @ModelAttribute (Form-data)
+            @Valid @ModelAttribute StudentProfileUpdateDTO updateDTO) {
+            // ---------------------------------
         
-        // Vẫn dùng cognitoSub để tìm và cập nhật
+        // Service đã được sửa để nhận DTO (chứa MultipartFile)
         StudentResponseDTO updatedStudent = studentService.updateMyProfile(principal.getCognitoSub(), updateDTO);
         return ResponseEntity.ok(updatedStudent);
     }
@@ -96,7 +102,7 @@ public class StudentController {
     @Operation(summary = "Get current student's event history", description = "Retrieves a paginated list of events the authenticated student has registered for.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Successfully retrieved event history"),
-            @ApiResponse(responseCode = "404", description = "Student profile not found for the authenticated user")
+            @ApiResponse(responseCode = "404", description = "Student profile not found")
     })
     @GetMapping("/me/events")
     @PreAuthorize("isAuthenticated() and !hasRole('ADMIN') and !hasRole('PARTNERS')")
@@ -108,7 +114,7 @@ public class StudentController {
 
         Pageable pageable = createPageable(page, size, sort);
         
-        // (LƯU Ý: Bạn cần tạo service 'getEventHistoryByStudent')
+        // (Sử dụng UUID từ principal)
         Page<EventResponseDTO> events = eventService.getEventHistoryByStudent(principal.getStudentId(), pageable);
         
         return ResponseEntity.ok(new PageResponseDTO<>(events));

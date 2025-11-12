@@ -23,7 +23,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/wallets")
-@Tag(name = "5. Wallet & Transactions")
+@Tag(name = "6. Wallet & Transactions")
 @SecurityRequirement(name = "bearerAuth")
 public class WalletController {
 
