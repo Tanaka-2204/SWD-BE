@@ -19,7 +19,7 @@ import java.time.OffsetDateTime;
 @Table(name = "Admin")
 public class Admin {
    @Id
-    @GeneratedValue(strategy = GenerationType.UUID) // SỬA ĐỔI CHIẾN LƯỢC
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "admin_id", nullable = false)
     private UUID id;
 
