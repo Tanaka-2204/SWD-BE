@@ -22,7 +22,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/invoices")
 @RequiredArgsConstructor
-@Tag(name = "4. Store & Redemption")
+@Tag(name = "5. Store & Redemption")
 @SecurityRequirement(name = "bearerAuth")
 public class ProductInvoiceController {
 
