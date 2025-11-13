@@ -98,7 +98,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
-    public ProductResponseDTO updateProduct(UUID id, ProductRequestDTO request) { // SỬA: Long -> UUID
+    public ProductResponseDTO updateProduct(UUID id, ProductRequestDTO request, MultipartFile image) { // SỬA: Long -> UUID
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
 
@@ -107,7 +107,25 @@ public class ProductServiceImpl implements ProductService {
         product.setDescription(request.getDescription());
         product.setUnitCost(request.getUnitCost());
         product.setTotalStock(request.getTotalStock());
-        product.setImageUrl(request.getImageUrl());
+
+        String imageUrl;
+        if (image != null && !image.isEmpty()) {
+            String contentType = image.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                throw new BadRequestException("Invalid image file type");
+            }
+            if (image.getSize() <= 0) {
+                throw new BadRequestException("Empty image file");
+            }
+            try {
+                imageUrl = cloudinaryService.uploadFile(image);
+            } catch (java.io.IOException e) {
+                throw new InternalServerErrorException("Failed to upload product image", e);
+            }
+        } else {
+            imageUrl = request.getImageUrl() != null ? request.getImageUrl() : product.getImageUrl();
+        }
+        product.setImageUrl(imageUrl);
 
         Product savedProduct = productRepository.save(product);
         return convertToDTO(savedProduct);
