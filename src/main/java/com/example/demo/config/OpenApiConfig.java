@@ -7,7 +7,7 @@ import io.swagger.v3.oas.annotations.info.Contact;
 import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.info.License;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
-import io.swagger.v3.oas.annotations.servers.Server;
+// import io.swagger.v3.oas.annotations.servers.Server; // <<< 1. XÓA IMPORT NÀY
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
@@ -26,16 +26,11 @@ import org.springframework.context.annotation.Configuration;
             name = "Apache 2.0",
             url = "https://www.apache.org/licenses/LICENSE-2.0.html"
         )
-    ),
-    servers = {
-        @Server(
-            url = "https://loyalty-system-be.onrender.com",
-            description = "Render public"
-        )
-    }
+    )
+    // <<< 2. XÓA TOÀN BỘ KHỐI "servers = { ... }" Ở ĐÂY
 )
 @SecurityScheme(
-    name = "bearerAuth", // Tên này vẫn giữ nguyên
+    name = "bearerAuth",
     description = "Enter JWT Bearer token",
     type = SecuritySchemeType.HTTP,
     scheme = "bearer",
