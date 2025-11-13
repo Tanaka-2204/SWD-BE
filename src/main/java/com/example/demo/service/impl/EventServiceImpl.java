@@ -543,11 +543,11 @@ public class EventServiceImpl implements EventService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));
 
-        if (!"PENDING".equals(event.getStatus())) {
-            throw new IllegalStateException("Event is not in PENDING status");
+        if (!"DRAFT".equals(event.getStatus())) {
+            throw new IllegalStateException("Event is not in DRAFT status");
         }
 
-        event.setStatus("APPROVED");
+        event.setStatus("ACTIVE");
         Event savedEvent = eventRepository.save(event);
 
         return convertToDTO(savedEvent);
