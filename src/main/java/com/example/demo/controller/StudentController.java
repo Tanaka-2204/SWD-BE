@@ -18,6 +18,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -51,7 +52,7 @@ public class StudentController {
             @ApiResponse(responseCode = "404", description = "University code from JWT not found in DB"),
             @ApiResponse(responseCode = "409", description = "Profile already exists or phone number is taken")
     })
-    @PostMapping("/me/complete-profile")
+    @PostMapping(value = "/me/complete-profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<StudentResponseDTO> completeProfile(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal,
             
@@ -84,17 +85,11 @@ public class StudentController {
             @ApiResponse(responseCode = "404", description = "Student profile not found"),
             @ApiResponse(responseCode = "409", description = "Phone number is already in use")
     })
-    @PutMapping("/me")
+    @PutMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<StudentResponseDTO> updateMyProfile(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal,
-            
-            // --- SỬA LỖI QUAN TRỌNG TẠI ĐÂY ---
-            // Đổi từ @RequestBody (JSON) sang @ModelAttribute (Form-data)
             @Valid @ModelAttribute StudentProfileUpdateDTO updateDTO) {
-            // ---------------------------------
-        
-        // Service đã được sửa để nhận DTO (chứa MultipartFile)
         StudentResponseDTO updatedStudent = studentService.updateMyProfile(principal.getCognitoSub(), updateDTO);
         return ResponseEntity.ok(updatedStudent);
     }
