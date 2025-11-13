@@ -21,12 +21,11 @@ import com.example.demo.repository.StudentRepository;
 import com.example.demo.repository.CheckinRepository;
 import java.util.UUID;
 import com.example.demo.service.BroadcastService;
-import com.example.demo.service.SocketIOService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +43,7 @@ public class BroadcastServiceImpl implements BroadcastService {
     private final EventBroadcastRepository eventBroadcastRepository;
     private final BroadcastDeliveryRepository broadcastDeliveryRepository;
     private final StudentRepository studentRepository;
-    private final SocketIOService socketIOService;
+    private final SimpMessagingTemplate messagingTemplate;
     private static final Logger logger = LoggerFactory.getLogger(BroadcastServiceImpl.class);
 
     public BroadcastServiceImpl(PartnerRepository partnerRepository,
@@ -52,14 +51,14 @@ public class BroadcastServiceImpl implements BroadcastService {
             CheckinRepository checkinRepository,
             EventBroadcastRepository eventBroadcastRepository,
             BroadcastDeliveryRepository broadcastDeliveryRepository, StudentRepository studentRepository,
-            SocketIOService socketIOService) {
+            SimpMessagingTemplate messagingTemplate) {
         this.partnerRepository = partnerRepository;
         this.eventRepository = eventRepository;
         this.checkinRepository = checkinRepository;
         this.eventBroadcastRepository = eventBroadcastRepository;
         this.broadcastDeliveryRepository = broadcastDeliveryRepository;
         this.studentRepository = studentRepository;
-        this.socketIOService = socketIOService;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @Override
@@ -87,9 +86,9 @@ public class BroadcastServiceImpl implements BroadcastService {
                         Student student = checkin.getStudent();
                         if (student != null && student.getCognitoSub() != null) {
                             StudentBroadcastResponseDTO payload = convertToStudentBroadcastDTO(delivery);
-                            socketIOService.sendEventToUser(
+                            messagingTemplate.convertAndSendToUser(
                                     student.getCognitoSub(),
-                                    "new_notification",
+                                    "/queue/notifications",
                                     payload);
                             logger.info("Pushed WebSocket notification to user {}", student.getCognitoSub());
                         }
