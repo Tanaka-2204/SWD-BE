@@ -29,7 +29,7 @@ import org.springframework.context.annotation.Configuration;
     ),
     servers = {
         @Server(
-            url = "https://brachycranic-noncorrelative-joya.ngrok-free.dev/",
+            url = "https://loyalty-system-be.onrender.com",
             description = "Render public"
         )
     }
