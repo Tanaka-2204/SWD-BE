@@ -53,7 +53,8 @@ public class SecurityConfig {
                     "/api/v1/event-categories",
                     "/api/v1/event-categories/*",
                     "/api/v1/products", 
-                    "/api/v1/products/*"
+                    "/api/v1/products/*",
+                    "/ws/**"
                 ).permitAll() 
                 .requestMatchers(HttpMethod.GET, "/api/v1/universities").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/events").permitAll()

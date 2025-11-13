@@ -39,7 +39,7 @@ public class BroadcastDelivery {
     private BroadcastDeliveryStatus status = BroadcastDeliveryStatus.UNREAD;
 
     @CreationTimestamp
-    @Column(name = "created_at")
+    @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 
 }

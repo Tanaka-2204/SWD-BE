@@ -46,7 +46,7 @@ public class WalletTransaction {
     private UUID referenceId;
 
     @Size(max = 120)
-    @Column(name = "idempotency_key", length = 120, unique = true) // THÊM unique = true
+    @Column(name = "idempotency_key", length = 120, unique = true)
     private String idempotencyKey;
 
     @CreationTimestamp

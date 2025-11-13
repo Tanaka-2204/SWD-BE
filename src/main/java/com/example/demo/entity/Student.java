@@ -8,8 +8,6 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.CreationTimestamp;
-
 import java.util.UUID;
 import java.time.OffsetDateTime;
 
@@ -26,7 +24,7 @@ public class Student {
 
     @Column(name = "cognito_sub", unique = true, nullable = false, updatable = false)
     private String cognitoSub;
-    
+
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "university_id", nullable = false)
@@ -40,7 +38,7 @@ public class Student {
     @Size(max = 20)
     @NotNull
     @Column(name = "phone_number", nullable = false, length = 20, unique = true)
-    @VietnamesePhoneNumber 
+    @VietnamesePhoneNumber
     private String phoneNumber;
 
     @Size(max = 200)
@@ -51,26 +49,16 @@ public class Student {
     private String avatarUrl;
 
     @NotNull
-    @Enumerated(EnumType.STRING) 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    @ColumnDefault("'ACTIVE'") 
+    @ColumnDefault("'ACTIVE'")
     private UserAccountStatus status = UserAccountStatus.ACTIVE;
 
-    @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 
-    @OneToOne(
-        cascade = CascadeType.ALL,  // Tự động tạo/xóa Wallet khi Student được tạo/xóa
-        fetch = FetchType.LAZY,     // Chỉ tải Wallet khi được gọi
-        optional = false            // Bắt buộc Student phải có Wallet
-    )
-    @JoinColumn(
-        name = "wallet_id",               // Tên cột khóa ngoại trong bảng "student"
-        referencedColumnName = "wallet_id", // Tên cột khóa chính trong bảng "wallet"
-        nullable = false,                 // Bắt buộc phải có
-        unique = true                     // Đảm bảo 1 Student chỉ có 1 Wallet
-    )
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "wallet_id", referencedColumnName = "wallet_id", nullable = false, unique = true)
     private Wallet wallet;
 
 }

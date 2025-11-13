@@ -36,7 +36,7 @@ public class Admin {
     private String fullName;
 
     @CreationTimestamp
-    @Column(name = "created_at")
+    @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 
 }

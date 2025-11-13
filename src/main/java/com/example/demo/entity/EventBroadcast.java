@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
+
 import java.util.UUID;
 import java.time.OffsetDateTime;
 
@@ -15,7 +15,7 @@ import java.time.OffsetDateTime;
 public class EventBroadcast {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID) // SỬA ĐỔI CHIẾN LƯỢC
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "broadcast_id", nullable = false)
     private UUID id;
 
@@ -28,8 +28,7 @@ public class EventBroadcast {
     @Column(name = "message_content", nullable = false)
     private String messageContent;
 
-    @ColumnDefault("now()")
-    @Column(name = "sent_at")
+    @Column(name = "sent_at", updatable = false)
     private OffsetDateTime sentAt;
 
 }

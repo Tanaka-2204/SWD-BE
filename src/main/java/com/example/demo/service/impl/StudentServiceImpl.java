@@ -18,13 +18,11 @@ import com.example.demo.repository.StudentRepository;
 import com.example.demo.repository.UniversityRepository;
 import com.example.demo.entity.enums.UserAccountStatus; 
 import com.example.demo.exception.BadRequestException;
-// === THÊM CÁC IMPORT ĐỂ UPLOAD ===
 import com.example.demo.exception.InternalServerErrorException; 
 import com.example.demo.service.CloudinaryService; 
 import com.example.demo.service.StudentService;
 import java.io.IOException; 
 import org.springframework.web.multipart.MultipartFile;
-// ==================================
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
@@ -36,6 +34,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import java.util.Map;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Service
@@ -136,7 +135,7 @@ public class StudentServiceImpl implements StudentService {
         student.setEmail(email);
         student.setUniversity(university);
         student.setPhoneNumber(completionDTO.getPhoneNumber());
-
+        student.setCreatedAt(OffsetDateTime.now());
         String avatarUrl = null;
         if (avatarFile != null && !avatarFile.isEmpty()) { 
             try {

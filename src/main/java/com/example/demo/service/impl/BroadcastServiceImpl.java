@@ -4,12 +4,13 @@ import com.example.demo.config.AuthPrincipal;
 import com.example.demo.dto.request.BroadcastRequestDTO;
 import com.example.demo.dto.response.EventBroadcastResponseDTO;
 import com.example.demo.dto.response.StudentBroadcastResponseDTO;
-import com.example.demo.entity.enums.BroadcastDeliveryStatus; // <<< THÊM IMPORT
+import com.example.demo.entity.enums.BroadcastDeliveryStatus;
 import com.example.demo.exception.BadRequestException;
 import com.example.demo.entity.BroadcastDelivery;
 import com.example.demo.entity.Checkin;
 import com.example.demo.entity.Event;
 import com.example.demo.entity.EventBroadcast;
+import com.example.demo.entity.Student;
 import com.example.demo.exception.ForbiddenException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.BroadcastDeliveryRepository;
@@ -22,8 +23,13 @@ import java.util.UUID;
 import com.example.demo.service.BroadcastService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Map;
@@ -37,59 +43,66 @@ public class BroadcastServiceImpl implements BroadcastService {
     private final EventBroadcastRepository eventBroadcastRepository;
     private final BroadcastDeliveryRepository broadcastDeliveryRepository;
     private final StudentRepository studentRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+    private static final Logger logger = LoggerFactory.getLogger(BroadcastServiceImpl.class);
 
     public BroadcastServiceImpl(PartnerRepository partnerRepository,
             EventRepository eventRepository,
             CheckinRepository checkinRepository,
             EventBroadcastRepository eventBroadcastRepository,
-            BroadcastDeliveryRepository broadcastDeliveryRepository, StudentRepository studentRepository) {
+            BroadcastDeliveryRepository broadcastDeliveryRepository, StudentRepository studentRepository,
+            SimpMessagingTemplate messagingTemplate) {
         this.partnerRepository = partnerRepository;
         this.eventRepository = eventRepository;
         this.checkinRepository = checkinRepository;
         this.eventBroadcastRepository = eventBroadcastRepository;
         this.broadcastDeliveryRepository = broadcastDeliveryRepository;
         this.studentRepository = studentRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @Override
-@Transactional
-public EventBroadcastResponseDTO sendBroadcast(UUID partnerId, BroadcastRequestDTO requestDTO) {
-    // 1. Lấy sự kiện
-    Event event = eventRepository.findById(requestDTO.getEventId())
-            .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + requestDTO.getEventId()));
-    // 2. Kiểm tra quyền: Partner này có phải người tổ chức sự kiện không?
-    if (!event.getPartner().getId().equals(partnerId)) {
-        throw new ForbiddenException("Partner does not own this event.");
-    }
-    // 3. Tạo bản ghi broadcast chính
-    EventBroadcast broadcast = new EventBroadcast();
-    broadcast.setEvent(event);
-    broadcast.setMessageContent(requestDTO.getMessageContent());
-    EventBroadcast savedBroadcast = eventBroadcastRepository.save(broadcast);
-    // 4. Lấy danh sách sinh viên đã đăng ký (TỪ BẢNG CHECKIN)
-    List<Checkin> checkins = checkinRepository.findAllByEventId(event.getId());
-    // 5. Tạo các bản ghi delivery cho từng sinh viên
-    if (!checkins.isEmpty()) {
-        List<BroadcastDelivery> deliveries = checkins.stream()
-                .map(checkin -> {
-                    BroadcastDelivery delivery = new BroadcastDelivery();
-                    delivery.setBroadcast(savedBroadcast);
-                    delivery.setStudent(checkin.getStudent());
-                    delivery.setStatus(BroadcastDeliveryStatus.UNREAD); 
-                    return delivery;
-                })
-                .collect(Collectors.toList());
+    @Transactional
+    public EventBroadcastResponseDTO sendBroadcast(UUID partnerId, BroadcastRequestDTO requestDTO) {
 
-        broadcastDeliveryRepository.saveAll(deliveries);
+        Event event = eventRepository.findById(requestDTO.getEventId())
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + requestDTO.getEventId()));
+        if (!event.getPartner().getId().equals(partnerId)) {
+            throw new ForbiddenException("Partner does not own this event.");
+        }
+        EventBroadcast broadcast = new EventBroadcast();
+        broadcast.setEvent(event);
+        broadcast.setMessageContent(requestDTO.getMessageContent());
+        broadcast.setSentAt(OffsetDateTime.now());
+        EventBroadcast savedBroadcast = eventBroadcastRepository.save(broadcast);
+        List<Checkin> checkins = checkinRepository.findAllByEventId(event.getId());
+        if (!checkins.isEmpty()) {
+            List<BroadcastDelivery> deliveries = checkins.stream()
+                    .map(checkin -> {
+                        BroadcastDelivery delivery = new BroadcastDelivery();
+                        delivery.setBroadcast(savedBroadcast);
+                        delivery.setStudent(checkin.getStudent());
+                        delivery.setStatus(BroadcastDeliveryStatus.UNREAD);
+                        Student student = checkin.getStudent();
+                        if (student != null && student.getCognitoSub() != null) {
+                            StudentBroadcastResponseDTO payload = convertToStudentBroadcastDTO(delivery);
+                            messagingTemplate.convertAndSendToUser(
+                                    student.getCognitoSub(),
+                                    "/queue/notifications",
+                                    payload);
+                            logger.info("Pushed WebSocket notification to user {}", student.getCognitoSub());
+                        }
+                        return delivery;
+                    })
+                    .collect(Collectors.toList());
+            broadcastDeliveryRepository.saveAll(deliveries);
+        }
+        return convertToDTO(savedBroadcast);
     }
-
-    return convertToDTO(savedBroadcast);
-}
 
     @Override
     @Transactional
     public EventBroadcastResponseDTO sendSystemBroadcast(BroadcastRequestDTO requestDTO) {
-        // 1. Tạo bản ghi broadcast chính (không liên kết với event cụ thể)
         EventBroadcast broadcast = new EventBroadcast();
         broadcast.setMessageContent(requestDTO.getMessageContent());
         EventBroadcast savedBroadcast = eventBroadcastRepository.save(broadcast);

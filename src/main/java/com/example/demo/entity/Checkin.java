@@ -37,7 +37,7 @@ public class Checkin {
     private Student student;
 
     @CreationTimestamp
-    @Column(name = "checkin_time")
+    @Column(name = "checkin_time", updatable = false)
     private OffsetDateTime checkinTime;
 
     @ColumnDefault("false")

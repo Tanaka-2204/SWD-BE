@@ -70,7 +70,7 @@ public class Event {
     private String status;
 
     @CreationTimestamp
-    @Column(name = "created_at")
+    @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 
     @ColumnDefault("0")

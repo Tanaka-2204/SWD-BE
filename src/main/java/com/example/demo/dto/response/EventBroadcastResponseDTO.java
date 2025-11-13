@@ -16,6 +16,4 @@ public class EventBroadcastResponseDTO {
     private String messageContent;
 
     private OffsetDateTime sentAt;
-
-    //private UUID recipientCount; 
 }
