@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.util.UUID;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -54,8 +56,8 @@ public class ProductInvoice {
     @Column(name = "verification_code", length = 12, unique = true) // THÊM unique = true
     private String verificationCode;
 
-    @ColumnDefault("now()")
-    @Column(name = "created_at")
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 
     @Column(name = "delivered_at")

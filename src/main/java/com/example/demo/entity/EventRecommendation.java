@@ -3,7 +3,8 @@ package com.example.demo.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.util.UUID;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -33,8 +34,8 @@ public class EventRecommendation {
     @Column(name = "explanation") 
     private String explanation;
 
-    @ColumnDefault("now()")
-    @Column(name = "created_at")
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 
 }

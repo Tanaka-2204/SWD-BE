@@ -10,6 +10,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.util.UUID;
 import java.time.OffsetDateTime;
 
@@ -34,7 +36,7 @@ public class Admin {
     @Column(name = "full_name", length = 200)
     private String fullName;
 
-    @ColumnDefault("now()")
+    @CreationTimestamp
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
 

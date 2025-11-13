@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.CreationTimestamp;
 import java.util.UUID;
 import java.time.OffsetDateTime;
 
@@ -35,7 +36,7 @@ public class Checkin {
     @JoinColumn(name = "student_id", nullable = false)
     private Student student;
 
-    @ColumnDefault("now()")
+    @CreationTimestamp
     @Column(name = "checkin_time")
     private OffsetDateTime checkinTime;
 
