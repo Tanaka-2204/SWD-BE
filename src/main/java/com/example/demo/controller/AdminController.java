@@ -259,9 +259,18 @@ public class AdminController {
     @Operation(summary = "Admin gets all wallet transactions", description = "Retrieves a paginated list of all wallet transactions in the system.")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved transactions")
     @GetMapping("/wallets/transactions")
-    public ResponseEntity<Page<WalletTransactionResponseDTO>> getAllTransactions(Pageable pageable) {
+    public ResponseEntity<PageResponseDTO<WalletTransactionResponseDTO>> getAllTransactions(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort) { // <<< SỬA 1: Dùng @RequestParam
+
+        // SỬA 2: Gọi helper 'createPageable'
+        Pageable pageable = createPageable(page, size, sort);
+        
         Page<WalletTransactionResponseDTO> transactions = walletService.getAllTransactions(pageable);
-        return ResponseEntity.ok(transactions);
+        
+        // SỬA 3: Trả về PageResponseDTO
+        return ResponseEntity.ok(new PageResponseDTO<>(transactions));
     }
 
     @Operation(summary = "Admin approves a pending event", description = "Changes event status from PENDING to APPROVED.")
