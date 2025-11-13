@@ -9,19 +9,19 @@ import com.example.demo.entity.Student;
 import com.example.demo.entity.University;
 import com.example.demo.exception.DataIntegrityViolationException;
 import com.example.demo.exception.ResourceNotFoundException;
-import com.example.demo.entity.Wallet; 
+import com.example.demo.entity.Wallet;
 import com.example.demo.entity.WalletTransaction;
-import com.example.demo.repository.WalletRepository; 
-import com.example.demo.repository.WalletTransactionRepository; 
+import com.example.demo.repository.WalletRepository;
+import com.example.demo.repository.WalletTransactionRepository;
 import java.math.BigDecimal;
 import com.example.demo.repository.StudentRepository;
 import com.example.demo.repository.UniversityRepository;
-import com.example.demo.entity.enums.UserAccountStatus; 
+import com.example.demo.entity.enums.UserAccountStatus;
 import com.example.demo.exception.BadRequestException;
-import com.example.demo.exception.InternalServerErrorException; 
-import com.example.demo.service.CloudinaryService; 
+import com.example.demo.exception.InternalServerErrorException;
+import com.example.demo.service.CloudinaryService;
 import com.example.demo.service.StudentService;
-import java.io.IOException; 
+import java.io.IOException;
 import org.springframework.web.multipart.MultipartFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +52,7 @@ public class StudentServiceImpl implements StudentService {
 
     @Value("${AWS_COGNITO_USER_POOL_ID}")
     private final String userPoolId;
-    @Value("${cognito.userinfo-url}") 
+    @Value("${cognito.userinfo-url}")
     private String userInfoUrl;
 
     // <<< SỬA: Cập nhật Constructor
@@ -77,7 +77,7 @@ public class StudentServiceImpl implements StudentService {
         // (Giữ nguyên logic)
         logger.info("Admin fetching all students, page {} size {}", pageable.getPageNumber(), pageable.getPageSize());
         Page<Student> studentPage = studentRepository.findAll(pageable);
-        return studentPage.map(this::toResponseDTO); 
+        return studentPage.map(this::toResponseDTO);
     }
 
     @Override
@@ -100,7 +100,7 @@ public class StudentServiceImpl implements StudentService {
         if (studentRepository.findByCognitoSub(cognitoSub).isPresent()) {
             throw new DataIntegrityViolationException("Student profile already completed.");
         }
-        
+
         Map<String, Object> userInfo;
         try {
             userInfo = webClient.get()
@@ -128,7 +128,6 @@ public class StudentServiceImpl implements StudentService {
         University university = universityRepository.findByName(universityName)
                 .orElseThrow(() -> new ResourceNotFoundException("University not found for name: " + universityName));
 
-
         Student student = new Student();
         student.setCognitoSub(cognitoSub);
         student.setFullName(fullName);
@@ -137,9 +136,9 @@ public class StudentServiceImpl implements StudentService {
         student.setPhoneNumber(completionDTO.getPhoneNumber());
         student.setCreatedAt(OffsetDateTime.now());
         String avatarUrl = null;
-        if (avatarFile != null && !avatarFile.isEmpty()) { 
+        if (avatarFile != null && !avatarFile.isEmpty()) {
             try {
-                avatarUrl = cloudinaryService.uploadFile(avatarFile); 
+                avatarUrl = cloudinaryService.uploadFile(avatarFile);
             } catch (IOException e) {
                 throw new InternalServerErrorException("Failed to upload avatar: " + e.getMessage());
             }
@@ -147,8 +146,9 @@ public class StudentServiceImpl implements StudentService {
         student.setAvatarUrl(avatarUrl);
         // ============================================
 
-        // ... (Logic tạo ví, tặng 100 coin, lưu Student, lưu Wallet, lưu Transaction... giữ nguyên)
-        
+        // ... (Logic tạo ví, tặng 100 coin, lưu Student, lưu Wallet, lưu Transaction...
+        // giữ nguyên)
+
         Wallet newWallet = new Wallet();
         BigDecimal bonusAmount = new BigDecimal(100);
         newWallet.setBalance(bonusAmount);
@@ -163,10 +163,10 @@ public class StudentServiceImpl implements StudentService {
 
         WalletTransaction bonusTx = new WalletTransaction();
         bonusTx.setWallet(newWallet);
-        bonusTx.setAmount(bonusAmount); 
+        bonusTx.setAmount(bonusAmount);
         bonusTx.setTxnType("SIGNUP_BONUS");
-        bonusTx.setReferenceType("SYSTEM"); 
-        bonusTx.setReferenceId(savedStudent.getId()); 
+        bonusTx.setReferenceType("SYSTEM");
+        bonusTx.setReferenceId(savedStudent.getId());
         transactionRepository.save(bonusTx);
 
         logger.info("Student {} created and received {} signup bonus.", savedStudent.getId(), bonusAmount);
@@ -176,31 +176,24 @@ public class StudentServiceImpl implements StudentService {
 
     @Override
     @Transactional
-    public StudentResponseDTO updateMyProfile(String cognitoSub, StudentProfileUpdateDTO updateDTO, MultipartFile avatarFile) {
-        logger.info("Attempting to update profile for cognitoSub: {}", cognitoSub);
+    public StudentResponseDTO updateMyProfile(String cognitoSub,
+            StudentProfileUpdateDTO updateDTO,
+            MultipartFile avatarFile) {
 
         Student student = studentRepository.findByCognitoSub(cognitoSub)
                 .orElseThrow(
-                        () -> new ResourceNotFoundException("Student profile not found for the authenticated user."));
-
-        // Cập nhật tên
-        if (updateDTO.getFullName() != null) {
-            student.setFullName(updateDTO.getFullName());
+                        () -> new ResourceNotFoundException("Student profile not found..."));
+        if (updateDTO != null) {
+            if (updateDTO.getFullName() != null) {
+                student.setFullName(updateDTO.getFullName());
+            }
+            if (updateDTO.getPhoneNumber() != null && !updateDTO.getPhoneNumber().equals(student.getPhoneNumber())) {
+                student.setPhoneNumber(updateDTO.getPhoneNumber());
+            }
         }
-
-        // Cập nhật SĐT (Logic cũ giữ nguyên)
-        if (updateDTO.getPhoneNumber() != null && !updateDTO.getPhoneNumber().equals(student.getPhoneNumber())) {
-            studentRepository.findByPhoneNumber(updateDTO.getPhoneNumber()).ifPresent(existingStudent -> {
-                throw new DataIntegrityViolationException(
-                        "Phone number " + updateDTO.getPhoneNumber() + " is already in use.");
-            });
-            student.setPhoneNumber(updateDTO.getPhoneNumber());
-        }
-        // <<< SỬA: LOGIC UPLOAD ẢNH MỚI
-        // ============================================
         if (avatarFile != null && !avatarFile.isEmpty()) {
             try {
-                String newAvatarUrl = cloudinaryService.uploadFile(avatarFile); 
+                String newAvatarUrl = cloudinaryService.uploadFile(avatarFile);
                 student.setAvatarUrl(newAvatarUrl);
             } catch (IOException e) {
                 throw new InternalServerErrorException("Failed to update avatar: " + e.getMessage());
@@ -208,8 +201,6 @@ public class StudentServiceImpl implements StudentService {
         }
 
         Student updatedStudent = studentRepository.save(student);
-        logger.info("Successfully updated profile for studentId: {}", updatedStudent.getId());
-
         return toResponseDTO(updatedStudent);
     }
 
