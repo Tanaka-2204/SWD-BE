@@ -7,7 +7,6 @@ import io.swagger.v3.oas.annotations.info.Contact;
 import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.info.License;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
-// import io.swagger.v3.oas.annotations.servers.Server; // <<< 1. XÓA IMPORT NÀY
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
@@ -27,7 +26,6 @@ import org.springframework.context.annotation.Configuration;
             url = "https://www.apache.org/licenses/LICENSE-2.0.html"
         )
     )
-    // <<< 2. XÓA TOÀN BỘ KHỐI "servers = { ... }" Ở ĐÂY
 )
 @SecurityScheme(
     name = "bearerAuth",
@@ -38,5 +36,4 @@ import org.springframework.context.annotation.Configuration;
     in = SecuritySchemeIn.HEADER
 )
 public class OpenApiConfig {
-    // Không cần nội dung
 }

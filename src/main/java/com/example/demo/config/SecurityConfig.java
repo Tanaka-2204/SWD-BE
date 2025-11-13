@@ -74,7 +74,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // --- CORS Configuration Bean --- (Giữ nguyên)
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
@@ -87,13 +86,6 @@ public class SecurityConfig {
         return source;
     }
 
-    // =======================================================
-    // == THÊM BEAN VÀ LỚP HELPER CHO VIỆC ĐỌC ROLE TỪ JWT ==
-    // =======================================================
-    /**
-     * Creates a custom JwtAuthenticationConverter to extract roles/authorities
-     * from the 'cognito:groups' claim in the Cognito JWT.
-     */
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
@@ -101,9 +93,6 @@ public class SecurityConfig {
         return converter;
     }
 
-    /**
-     * Helper class to convert Cognito groups claim into Spring Security GrantedAuthority objects.
-     */
     static class CognitoGroupsConverter implements Converter<Jwt, Collection<GrantedAuthority>> {
 
         private final JwtGrantedAuthoritiesConverter defaultConverter = new JwtGrantedAuthoritiesConverter();
@@ -112,19 +101,11 @@ public class SecurityConfig {
 
         @Override
         public Collection<GrantedAuthority> convert(Jwt jwt) {
-            // 1. Lấy các quyền mặc định (ví dụ: SCOPE_openid)
             Collection<GrantedAuthority> defaultAuthorities = defaultConverter.convert(jwt);
-            
-            // 2. Lấy danh sách Group từ Cognito
             List<String> groups = jwt.getClaimAsStringList(COGNITO_GROUPS_CLAIM);
-
-            // 3. SỬA LỖI LOGIC:
-            // Nếu không có group (là Student) -> Trả về danh sách rỗng (hoặc chỉ default)
             if (groups == null || groups.isEmpty()) {
                 return defaultAuthorities != null ? defaultAuthorities : Collections.emptyList();
             }
-
-            // 4. Nếu có group (là Admin/Partner) -> Thêm vai trò theo group
             List<GrantedAuthority> groupAuthorities = groups.stream()
                     .map(groupName -> new SimpleGrantedAuthority(ROLE_PREFIX + groupName.toUpperCase()))
                     .collect(Collectors.toList());
