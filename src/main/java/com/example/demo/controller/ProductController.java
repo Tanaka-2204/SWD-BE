@@ -90,10 +90,28 @@ public class ProductController {
         return ResponseEntity.ok(product);
     }
 
-    @PutMapping("/{id}")
-    @Operation(summary = "Update product (Admin)")
-    public ResponseEntity<ProductResponseDTO> updateProduct(@PathVariable UUID id, @Valid @RequestBody ProductRequestDTO request) {
-        ProductResponseDTO product = productService.updateProduct(id, request);
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Update product (Admin) - supports image upload")
+    public ResponseEntity<ProductResponseDTO> updateProduct(
+            @PathVariable UUID id,
+            @RequestPart("data") String data,
+            @RequestPart(value = "image", required = false) MultipartFile image) {
+        ProductRequestDTO request;
+        try {
+            request = objectMapper.readValue(data, ProductRequestDTO.class);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new BadRequestException("Invalid JSON in 'data' part: " + e.getOriginalMessage());
+        }
+
+        Set<ConstraintViolation<ProductRequestDTO>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            String msg = violations.stream()
+                    .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                    .collect(Collectors.joining("; "));
+            throw new BadRequestException(msg);
+        }
+
+        ProductResponseDTO product = productService.updateProduct(id, request, image);
         return ResponseEntity.ok(product);
     }
 

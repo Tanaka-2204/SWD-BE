@@ -17,7 +17,7 @@ public interface ProductService {
 
     ProductResponseDTO createProduct(ProductRequestDTO request, MultipartFile image);
 
-    ProductResponseDTO updateProduct(UUID id, ProductRequestDTO request);
+    ProductResponseDTO updateProduct(UUID id, ProductRequestDTO request, org.springframework.web.multipart.MultipartFile image);
 
     void deleteProduct(UUID id);
 
