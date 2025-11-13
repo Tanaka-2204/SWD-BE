@@ -5,7 +5,7 @@ import com.example.demo.dto.request.PartnerRequestDTO;
 import com.example.demo.dto.request.UserStatusUpdateDTO;
 import com.example.demo.dto.request.WalletTopupRequestDTO;
 import com.example.demo.dto.response.StudentResponseDTO;
-import com.example.demo.dto.request.UniversityRequestDTO; // <<< THÊM
+import com.example.demo.dto.request.UniversityRequestDTO;
 import com.example.demo.dto.response.UniversityResponseDTO;
 import com.example.demo.service.StudentService;
 import com.example.demo.service.UniversityService;
@@ -53,10 +53,10 @@ public class AdminController {
     private final FeedbackService feedbackService;
 
     public AdminController(PartnerService partnerService,
-                           WalletService walletService,
-                           EventCategoryService eventCategoryService,
-                           EventService eventService,
-                           StudentService studentService, UniversityService universityService, FeedbackService feedbackService) {
+            WalletService walletService,
+            EventCategoryService eventCategoryService,
+            EventService eventService,
+            StudentService studentService, UniversityService universityService, FeedbackService feedbackService) {
         this.partnerService = partnerService;
         this.walletService = walletService;
         this.eventCategoryService = eventCategoryService;
@@ -78,8 +78,7 @@ public class AdminController {
     })
     @PostMapping("/partners")
     public ResponseEntity<PartnerResponseDTO> createPartner(@Valid @RequestBody PartnerRequestDTO requestDTO) {
-        // Service này đã chứa logic tạo user Cognito và add group
-        PartnerResponseDTO newPartner = partnerService.createPartner(requestDTO); 
+        PartnerResponseDTO newPartner = partnerService.createPartner(requestDTO);
         return new ResponseEntity<>(newPartner, HttpStatus.CREATED);
     }
 
@@ -87,31 +86,21 @@ public class AdminController {
     @ApiResponse(responseCode = "200", description = "Successfully retrieved partner list")
     @GetMapping("/partners")
     public ResponseEntity<PageResponseDTO<PartnerResponseDTO>> getAllPartners(
-            // FE chỉ cần gửi 3 tham số đơn giản này
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id,asc") String sort) {
-        
-        // Backend tự xử lý logic Pageable phức tạp
         Pageable pageable = createPageable(page, size, sort);
-        
-        // Gọi service (Lưu ý: Service phải được cập nhật ở Bước 3)
         Page<PartnerResponseDTO> partnersPage = partnerService.getAllPartners(pageable);
-        
-        // Trả về DTO đã được tối giản
         return ResponseEntity.ok(new PageResponseDTO<>(partnersPage));
     }
-    
-    // (Bạn cũng có thể di chuyển API PUT/DELETE Partner vào đây nếu chỉ Admin được làm)
-
     // ===================================
     // == Wallet Management
     // ===================================
 
     @Operation(summary = "Admin top up coin for a partner", description = "Adds funds to a specific partner's wallet.")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Top-up successful"),
-        @ApiResponse(responseCode = "404", description = "Partner or wallets not found")
+            @ApiResponse(responseCode = "200", description = "Top-up successful"),
+            @ApiResponse(responseCode = "404", description = "Partner or wallets not found")
     })
     @PostMapping("/wallets/topup")
     public ResponseEntity<WalletTransactionResponseDTO> topupWalletForPartner(
@@ -126,8 +115,8 @@ public class AdminController {
 
     @Operation(summary = "Admin creates a new event category", description = "Adds a new category for classifying events.")
     @ApiResponses({
-        @ApiResponse(responseCode = "201", description = "Category created successfully"),
-        @ApiResponse(responseCode = "409", description = "Category with the same name already exists")
+            @ApiResponse(responseCode = "201", description = "Category created successfully"),
+            @ApiResponse(responseCode = "409", description = "Category with the same name already exists")
     })
     @PostMapping("/event-categories")
     public ResponseEntity<EventCategoryResponseDTO> createCategory(
@@ -138,9 +127,9 @@ public class AdminController {
 
     @Operation(summary = "Admin updates an event category", description = "Updates the details of an existing event category.")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Category updated successfully"),
-        @ApiResponse(responseCode = "404", description = "Event category not found"),
-        @ApiResponse(responseCode = "409", description = "Another category with the same name already exists")
+            @ApiResponse(responseCode = "200", description = "Category updated successfully"),
+            @ApiResponse(responseCode = "404", description = "Event category not found"),
+            @ApiResponse(responseCode = "409", description = "Another category with the same name already exists")
     })
     @PutMapping("/event-categories/{id}")
     public ResponseEntity<EventCategoryResponseDTO> updateCategory(
@@ -151,8 +140,8 @@ public class AdminController {
 
     @Operation(summary = "Admin deletes an event category", description = "Deletes an event category.")
     @ApiResponses({
-        @ApiResponse(responseCode = "204", description = "Category deleted successfully"),
-        @ApiResponse(responseCode = "404", description = "Category not found")
+            @ApiResponse(responseCode = "204", description = "Category deleted successfully"),
+            @ApiResponse(responseCode = "404", description = "Category not found")
     })
     @DeleteMapping("/event-categories/{id}")
     public ResponseEntity<Void> deleteCategory(
@@ -169,47 +158,44 @@ public class AdminController {
     @ApiResponse(responseCode = "200", description = "Successfully retrieved student list")
     @GetMapping("/students")
     public ResponseEntity<PageResponseDTO<StudentResponseDTO>> getAllStudents(
-            // FE chỉ cần gửi 3 tham số đơn giản này
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id,asc") String sort) {
-
-        // Backend tự xử lý logic Pageable phức tạp
         Pageable pageable = createPageable(page, size, sort);
-        
+
         // Gọi service
         Page<StudentResponseDTO> students = studentService.getAllStudents(pageable);
-        
+
         // Trả về DTO đã được tối giản
         return ResponseEntity.ok(new PageResponseDTO<>(students));
     }
 
     @Operation(summary = "Admin updates a student's status", description = "Updates the status of a specific student (e.g., to 'ACTIVE' or 'SUSPENDED').")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Student status updated successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid status value provided"),
-        @ApiResponse(responseCode = "404", description = "Student not found")
+            @ApiResponse(responseCode = "200", description = "Student status updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid status value provided"),
+            @ApiResponse(responseCode = "404", description = "Student not found")
     })
     @PatchMapping("/students/{id}/status") // <<< API MỚI
     public ResponseEntity<StudentResponseDTO> updateStudentStatus(
             @Parameter(description = "ID of the student to update") @PathVariable UUID id,
             @Valid @RequestBody UserStatusUpdateDTO statusDTO) {
-        
+
         StudentResponseDTO updatedStudent = studentService.updateStudentStatus(id, statusDTO);
         return ResponseEntity.ok(updatedStudent);
     }
 
     @Operation(summary = "Admin updates a partner's status", description = "Updates the status of a specific partner (e.g., to 'ACTIVE' or 'SUSPENDED').")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Partner status updated successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid status value provided"),
-        @ApiResponse(responseCode = "404", description = "Partner not found")
+            @ApiResponse(responseCode = "200", description = "Partner status updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid status value provided"),
+            @ApiResponse(responseCode = "404", description = "Partner not found")
     })
     @PatchMapping("/partners/{id}/status") // <<< API MỚI
     public ResponseEntity<PartnerResponseDTO> updatePartnerStatus(
             @Parameter(description = "ID of the partner to update") @PathVariable UUID id,
             @Valid @RequestBody UserStatusUpdateDTO statusDTO) {
-        
+
         PartnerResponseDTO updatedPartner = partnerService.updatePartnerStatus(id, statusDTO);
         return ResponseEntity.ok(updatedPartner);
     }
@@ -241,8 +227,7 @@ public class AdminController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Admin gets all feedback (system-wide)",
-               description = "Retrieves a paginated list of all feedback. Can be filtered by eventId.")
+    @Operation(summary = "Admin gets all feedback (system-wide)", description = "Retrieves a paginated list of all feedback. Can be filtered by eventId.")
     @GetMapping("/feedback")
     public ResponseEntity<PageResponseDTO<FeedbackResponseDTO>> getAllSystemFeedback(
             @RequestParam(required = false) UUID eventId,
@@ -252,7 +237,7 @@ public class AdminController {
 
         Pageable pageable = createPageable(1, size, sort);
         Page<FeedbackResponseDTO> feedbackPage = feedbackService.getAllFeedback(eventId, pageable);
-        
+
         return ResponseEntity.ok(new PageResponseDTO<>(feedbackPage));
     }
 
@@ -266,18 +251,18 @@ public class AdminController {
 
         // SỬA 2: Gọi helper 'createPageable'
         Pageable pageable = createPageable(page, size, sort);
-        
+
         Page<WalletTransactionResponseDTO> transactions = walletService.getAllTransactions(pageable);
-        
+
         // SỬA 3: Trả về PageResponseDTO
         return ResponseEntity.ok(new PageResponseDTO<>(transactions));
     }
 
     @Operation(summary = "Admin approves a pending event", description = "Changes event status from PENDING to APPROVED.")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Event approved successfully"),
-        @ApiResponse(responseCode = "404", description = "Event not found"),
-        @ApiResponse(responseCode = "409", description = "Event is not in PENDING status")
+            @ApiResponse(responseCode = "200", description = "Event approved successfully"),
+            @ApiResponse(responseCode = "404", description = "Event not found"),
+            @ApiResponse(responseCode = "409", description = "Event is not in PENDING status")
     })
     @PatchMapping("/events/{id}/approve")
     public ResponseEntity<EventResponseDTO> approveEvent(@PathVariable UUID id) {
@@ -291,10 +276,10 @@ public class AdminController {
         try {
             String[] sortParams = sort.split(",");
             String sortField = sortParams[0];
-            Sort.Direction direction = (sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")) 
-                                        ? Sort.Direction.DESC 
-                                        : Sort.Direction.ASC;
-            
+            Sort.Direction direction = (sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc"))
+                    ? Sort.Direction.DESC
+                    : Sort.Direction.ASC;
+
             return PageRequest.of(pageIndex, size, Sort.by(direction, sortField));
         } catch (Exception e) {
             // (Xử lý lỗi nếu chuỗi sort bị sai, ví dụ dùng 'id' làm mặc định)
