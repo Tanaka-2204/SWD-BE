@@ -4,7 +4,7 @@ import com.example.demo.config.AuthPrincipal;
 import com.example.demo.dto.request.StudentProfileCompletionDTO;
 import com.example.demo.dto.request.StudentProfileUpdateDTO;
 import com.example.demo.dto.response.StudentResponseDTO;
-import com.example.demo.dto.response.EventResponseDTO; 
+import com.example.demo.dto.response.EventResponseDTO;
 import com.example.demo.dto.response.PageResponseDTO;
 import com.example.demo.service.StudentService;
 import com.example.demo.service.EventService;
@@ -24,11 +24,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.data.domain.Page; 
-import org.springframework.data.domain.PageRequest; 
-import org.springframework.data.domain.Pageable; 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import java.util.UUID;
+import org.springframework.web.multipart.MultipartFile; // <<< THÊM IMPORT NÀY
+import com.fasterxml.jackson.databind.ObjectMapper; // <<< THÊM IMPORT NÀY
+import com.example.demo.exception.BadRequestException;
 
 @RestController
 @RequestMapping("/api/v1/students")
@@ -38,14 +40,15 @@ public class StudentController {
 
     private final StudentService studentService;
     private final EventService eventService;
+    private final ObjectMapper objectMapper;
 
-    public StudentController(StudentService studentService, EventService eventService) {
+    public StudentController(StudentService studentService, EventService eventService, ObjectMapper objectMapper) {
         this.studentService = studentService;
         this.eventService = eventService;
+        this.objectMapper = objectMapper;
     }
 
-    @Operation(summary = "Complete student profile (Phone & Avatar)",
-               description = "Called once after Cognito registration. Endpoint này nhận 'multipart/form-data'.")
+    @Operation(summary = "Complete student profile (Phone & Avatar)", description = "Called once after Cognito registration. Endpoint này nhận 'multipart/form-data'.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Profile created successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid data (e.g., phone format)"),
@@ -55,30 +58,34 @@ public class StudentController {
     @PostMapping(value = "/me/complete-profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<StudentResponseDTO> completeProfile(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal,
-            
-            // --- SỬA LỖI QUAN TRỌNG TẠI ĐÂY ---
-            // Đổi từ @RequestBody (JSON) sang @ModelAttribute (Form-data)
-            @Valid @ModelAttribute StudentProfileCompletionDTO completionDTO) {
-            // ---------------------------------
+
+            @Parameter(description = "JSON data for the profile. Ví dụ: {\"phoneNumber\": \"0901234567\"}", required = true) @RequestPart("data") String completionDTOString,
+
+            @Parameter(description = "Avatar image file (optional)", required = false) @RequestPart(value = "image", required = false) MultipartFile avatarFile) {
+        StudentProfileCompletionDTO completionDTO;
+        try {
+            completionDTO = objectMapper.readValue(completionDTOString, StudentProfileCompletionDTO.class);
+        } catch (Exception e) {
+            throw new BadRequestException("Invalid 'data' JSON format: " + e.getMessage());
+        }
 
         // Lấy raw access token
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
-             throw new IllegalStateException("Authentication is not a JWT Token");
+            throw new IllegalStateException("Authentication is not a JWT Token");
         }
         String rawAccessToken = ((JwtAuthenticationToken) authentication).getToken().getTokenValue();
 
-        // Service đã được sửa để nhận DTO (chứa MultipartFile)
+        // 5. Gọi Service (chúng ta sẽ sửa Service ở bước sau)
         StudentResponseDTO newStudent = studentService.completeProfile(
-            principal, 
-            rawAccessToken, 
-            completionDTO
-        );
+                principal,
+                rawAccessToken,
+                completionDTO,
+                avatarFile);
         return new ResponseEntity<>(newStudent, HttpStatus.CREATED);
     }
 
-    @Operation(summary = "Update current student's profile", 
-               description = "Allows student to update info. Endpoint này nhận 'multipart/form-data'.")
+    @Operation(summary = "Update current student's profile", description = "Allows student to update info. Endpoint này nhận 'multipart/form-data'.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Profile updated successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid input data"),
@@ -89,8 +96,21 @@ public class StudentController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<StudentResponseDTO> updateMyProfile(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal,
-            @Valid @ModelAttribute StudentProfileUpdateDTO updateDTO) {
-        StudentResponseDTO updatedStudent = studentService.updateMyProfile(principal.getCognitoSub(), updateDTO);
+
+            @Parameter(description = "JSON data for the profile. Ví dụ: {\"fullName\": \"Test\"}", required = true) @RequestPart("data") String updateDTOString,
+
+            @Parameter(description = "New avatar image file (optional)", required = false) @RequestPart(value = "image", required = false) MultipartFile avatarFile) {
+
+        StudentProfileUpdateDTO updateDTO;
+        try {
+            updateDTO = objectMapper.readValue(updateDTOString, StudentProfileUpdateDTO.class);
+        } catch (Exception e) {
+            throw new BadRequestException("Invalid 'data' JSON format: " + e.getMessage());
+        }
+        StudentResponseDTO updatedStudent = studentService.updateMyProfile(
+                principal.getCognitoSub(),
+                updateDTO,
+                avatarFile);
         return ResponseEntity.ok(updatedStudent);
     }
 
@@ -108,10 +128,10 @@ public class StudentController {
             @RequestParam(defaultValue = "checkinTime,desc") String sort) {
 
         Pageable pageable = createPageable(page, size, sort);
-        
+
         // (Sử dụng UUID từ principal)
         Page<EventResponseDTO> events = eventService.getEventHistoryByStudent(principal.getStudentId(), pageable);
-        
+
         return ResponseEntity.ok(new PageResponseDTO<>(events));
     }
 
@@ -120,9 +140,9 @@ public class StudentController {
         try {
             String[] sortParams = sort.split(",");
             String sortField = sortParams[0];
-            Sort.Direction direction = (sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")) 
-                                        ? Sort.Direction.DESC 
-                                        : Sort.Direction.ASC;
+            Sort.Direction direction = (sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc"))
+                    ? Sort.Direction.DESC
+                    : Sort.Direction.ASC;
             return PageRequest.of(pageIndex, size, Sort.by(direction, sortField));
         } catch (Exception e) {
             return PageRequest.of(pageIndex, size, Sort.by(Sort.Direction.DESC, "id"));

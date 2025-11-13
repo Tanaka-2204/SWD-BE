@@ -3,7 +3,6 @@ package com.example.demo.dto.request;
 import com.example.demo.validation.annotations.VietnamesePhoneNumber;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
-import org.springframework.web.multipart.MultipartFile;
 
 @Data
 public class StudentProfileUpdateDTO {
@@ -13,6 +12,4 @@ public class StudentProfileUpdateDTO {
 
     @VietnamesePhoneNumber
     private String phoneNumber;
-
-    private MultipartFile avatarFile;
 }
