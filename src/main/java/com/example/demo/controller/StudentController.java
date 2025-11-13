@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,8 +27,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.web.multipart.MultipartFile; // <<< THÊM IMPORT NÀY
-import com.fasterxml.jackson.databind.ObjectMapper; // <<< THÊM IMPORT NÀY
+import org.springframework.web.multipart.MultipartFile; 
+import com.fasterxml.jackson.databind.ObjectMapper; 
 import com.example.demo.exception.BadRequestException;
 
 @RestController
@@ -96,16 +95,21 @@ public class StudentController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<StudentResponseDTO> updateMyProfile(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal,
-
-            @Parameter(description = "JSON data for the profile. Ví dụ: {\"fullName\": \"Test\"}", required = true) @RequestPart("data") String updateDTOString,
-
+            @Parameter(description = "JSON data for the profile. Ví dụ: {\"fullName\": \"Test\"}", required = false) @RequestPart(value = "data", required = false) String updateDTOString,
             @Parameter(description = "New avatar image file (optional)", required = false) @RequestPart(value = "image", required = false) MultipartFile avatarFile) {
-
-        StudentProfileUpdateDTO updateDTO;
-        try {
-            updateDTO = objectMapper.readValue(updateDTOString, StudentProfileUpdateDTO.class);
-        } catch (Exception e) {
-            throw new BadRequestException("Invalid 'data' JSON format: " + e.getMessage());
+        StudentProfileUpdateDTO updateDTO = null;
+        if (updateDTOString != null && !updateDTOString.isBlank()) {
+            try {
+                updateDTO = objectMapper.readValue(updateDTOString, StudentProfileUpdateDTO.class);
+            } catch (Exception e) {
+                throw new BadRequestException("Invalid 'data' JSON format: " + e.getMessage());
+            }
+        }
+        boolean noData = (updateDTO == null || (updateDTO.getFullName() == null && updateDTO.getPhoneNumber() == null));
+        boolean noImage = (avatarFile == null || avatarFile.isEmpty());
+        if (noData && noImage) {
+            throw new BadRequestException(
+                    "No update data provided. Please provide 'data' (JSON) or an 'image' file to update.");
         }
         StudentResponseDTO updatedStudent = studentService.updateMyProfile(
                 principal.getCognitoSub(),
@@ -128,8 +132,6 @@ public class StudentController {
             @RequestParam(defaultValue = "checkinTime,desc") String sort) {
 
         Pageable pageable = createPageable(page, size, sort);
-
-        // (Sử dụng UUID từ principal)
         Page<EventResponseDTO> events = eventService.getEventHistoryByStudent(principal.getStudentId(), pageable);
 
         return ResponseEntity.ok(new PageResponseDTO<>(events));
