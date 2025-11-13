@@ -4,7 +4,8 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.util.UUID;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -34,8 +35,8 @@ public class EventFunding {
     @Column(name = "amount_coin", nullable = false, precision = 18, scale = 2)
     private BigDecimal amountCoin;
 
-    @ColumnDefault("now()")
-    @Column(name = "created_at")
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 
 }

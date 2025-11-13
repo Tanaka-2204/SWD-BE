@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.CreationTimestamp;
 
 import com.example.demo.entity.enums.BroadcastDeliveryStatus;
 
@@ -37,7 +38,7 @@ public class BroadcastDelivery {
     @Column(name = "status", nullable = false, length = 20)
     private BroadcastDeliveryStatus status = BroadcastDeliveryStatus.UNREAD;
 
-    @ColumnDefault("now()")
+    @CreationTimestamp
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
 

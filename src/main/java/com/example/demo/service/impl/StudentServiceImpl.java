@@ -94,9 +94,9 @@ public class StudentServiceImpl implements StudentService {
     @Transactional
     public StudentResponseDTO completeProfile(AuthPrincipal principal,
             String rawAccessToken,
-            StudentProfileCompletionDTO completionDTO) {
+            StudentProfileCompletionDTO completionDTO,
+            MultipartFile avatarFile) {
 
-        // ... (Logic kiểm tra profile, gọi /userinfo, lấy thông tin, tìm trường ĐH... giữ nguyên)
         String cognitoSub = principal.getCognitoSub();
         if (studentRepository.findByCognitoSub(cognitoSub).isPresent()) {
             throw new DataIntegrityViolationException("Student profile already completed.");
@@ -136,23 +136,16 @@ public class StudentServiceImpl implements StudentService {
         student.setEmail(email);
         student.setUniversity(university);
         student.setPhoneNumber(completionDTO.getPhoneNumber());
-        // student.setAvatarUrl(completionDTO.getAvatarUrl()); // <<< XÓA DÒNG NÀY
 
-        // ============================================
-        // <<< SỬA: LOGIC UPLOAD ẢNH MỚI
-        // ============================================
         String avatarUrl = null;
-        if (completionDTO.getAvatarFile() != null && !completionDTO.getAvatarFile().isEmpty()) {
+        if (avatarFile != null && !avatarFile.isEmpty()) { 
             try {
-                logger.debug("Uploading avatar for new student {}", cognitoSub);
-                avatarUrl = cloudinaryService.uploadFile(completionDTO.getAvatarFile());
+                avatarUrl = cloudinaryService.uploadFile(avatarFile); 
             } catch (IOException e) {
-                logger.error("Failed to upload avatar for student {}: {}", cognitoSub, e.getMessage());
-                // (Không chặn đăng ký nếu lỗi ảnh, nhưng báo lỗi)
                 throw new InternalServerErrorException("Failed to upload avatar: " + e.getMessage());
             }
         }
-        student.setAvatarUrl(avatarUrl); // Gán URL (có thể là null)
+        student.setAvatarUrl(avatarUrl);
         // ============================================
 
         // ... (Logic tạo ví, tặng 100 coin, lưu Student, lưu Wallet, lưu Transaction... giữ nguyên)
@@ -184,7 +177,7 @@ public class StudentServiceImpl implements StudentService {
 
     @Override
     @Transactional
-    public StudentResponseDTO updateMyProfile(String cognitoSub, StudentProfileUpdateDTO updateDTO) {
+    public StudentResponseDTO updateMyProfile(String cognitoSub, StudentProfileUpdateDTO updateDTO, MultipartFile avatarFile) {
         logger.info("Attempting to update profile for cognitoSub: {}", cognitoSub);
 
         Student student = studentRepository.findByCognitoSub(cognitoSub)
@@ -204,26 +197,16 @@ public class StudentServiceImpl implements StudentService {
             });
             student.setPhoneNumber(updateDTO.getPhoneNumber());
         }
-
-        // if (updateDTO.getAvatarUrl() != null) { // <<< XÓA DÒNG NÀY
-        //     student.setAvatarUrl(updateDTO.getAvatarUrl());
-        // }
-
-        // ============================================
         // <<< SỬA: LOGIC UPLOAD ẢNH MỚI
         // ============================================
-        if (updateDTO.getAvatarFile() != null && !updateDTO.getAvatarFile().isEmpty()) {
+        if (avatarFile != null && !avatarFile.isEmpty()) {
             try {
-                // (Sau này bạn có thể thêm logic xóa ảnh cũ trên Cloudinary tại đây)
-                logger.debug("Updating avatar for student {}", student.getId());
-                String newAvatarUrl = cloudinaryService.uploadFile(updateDTO.getAvatarFile());
+                String newAvatarUrl = cloudinaryService.uploadFile(avatarFile); 
                 student.setAvatarUrl(newAvatarUrl);
             } catch (IOException e) {
-                logger.error("Failed to update avatar for student {}: {}", student.getId(), e.getMessage());
                 throw new InternalServerErrorException("Failed to update avatar: " + e.getMessage());
             }
         }
-        // ============================================
 
         Student updatedStudent = studentRepository.save(student);
         logger.info("Successfully updated profile for studentId: {}", updatedStudent.getId());

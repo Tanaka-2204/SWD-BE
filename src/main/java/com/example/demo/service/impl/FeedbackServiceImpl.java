@@ -2,6 +2,7 @@ package com.example.demo.service.impl;
 
 import com.example.demo.dto.request.FeedbackRequestDTO;
 import com.example.demo.dto.response.FeedbackResponseDTO;
+import com.example.demo.config.AuthPrincipal;
 import com.example.demo.entity.*;
 import com.example.demo.exception.*;
 import com.example.demo.repository.*;
@@ -84,7 +85,45 @@ public class FeedbackServiceImpl implements FeedbackService {
         return feedbackPage.map(this::convertToDTO);
     }
 
-    // Helper (Giữ nguyên)
+    @Override
+    @Transactional
+    public FeedbackResponseDTO updateFeedback(UUID feedbackId, FeedbackRequestDTO requestDTO, AuthPrincipal principal) {
+        UUID studentId = getStudentIdFromPrincipal(principal);
+
+        Feedback feedback = feedbackRepository.findById(feedbackId)
+                .orElseThrow(() -> new ResourceNotFoundException("Feedback not found with id: " + feedbackId));
+
+        if (!feedback.getStudent().getId().equals(studentId)) {
+            throw new ForbiddenException("You are not authorized to update this feedback.");
+        }
+        feedback.setRating(requestDTO.getRating());
+        feedback.setComments(requestDTO.getComments());
+
+        Feedback updatedFeedback = feedbackRepository.save(feedback);
+        return convertToDTO(updatedFeedback);
+    }
+
+    @Override
+    @Transactional
+    public void deleteFeedback(UUID feedbackId, AuthPrincipal principal) {
+        UUID studentId = getStudentIdFromPrincipal(principal);
+
+        Feedback feedback = feedbackRepository.findById(feedbackId)
+                .orElseThrow(() -> new ResourceNotFoundException("Feedback not found with id: " + feedbackId));
+
+        if (!feedback.getStudent().getId().equals(studentId)) {
+            throw new ForbiddenException("You are not authorized to delete this feedback.");
+        }
+        feedbackRepository.delete(feedback);
+    }
+
+    private UUID getStudentIdFromPrincipal(AuthPrincipal principal) {
+        if (principal == null || !principal.isStudent() || principal.getStudentId() == null) {
+            throw new ForbiddenException("Only authenticated students can perform this action.");
+        }
+        return principal.getStudentId();
+    }
+
     private FeedbackResponseDTO convertToDTO(Feedback feedback) {
         FeedbackResponseDTO dto = new FeedbackResponseDTO();
         dto.setId(feedback.getId());
