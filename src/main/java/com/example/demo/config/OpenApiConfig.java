@@ -29,15 +29,10 @@ import org.springframework.context.annotation.Configuration;
     ),
     servers = {
         @Server(
-            url = "http://localhost:8080",
-            description = "Local Development Server"
-        ),
-        @Server(
             url = "https://loyalty-system-be.onrender.com",
             description = "Render public"
         )
     }
-    // <<< TÔI ĐÃ XÓA "security = @SecurityRequirement(name = "bearerAuth")" KHỎI ĐÂY >>>
 )
 @SecurityScheme(
     name = "bearerAuth", // Tên này vẫn giữ nguyên
