@@ -18,6 +18,12 @@ import org.springframework.web.bind.annotation.RequestPart;
 import java.util.UUID;
 import java.util.List;
 import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.Validator;
+import com.example.demo.exception.BadRequestException;
+import jakarta.validation.ConstraintViolation;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/products")
@@ -27,6 +33,8 @@ import java.util.Map;
 public class ProductController {
 
     private final ProductService productService;
+    private final ObjectMapper objectMapper;
+    private final Validator validator;
 
     @GetMapping
     @Operation(summary = "Get products list with sort/filter")
@@ -61,8 +69,23 @@ public class ProductController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Create new product (Admin) - supports image upload")
     public ResponseEntity<ProductResponseDTO> createProduct(
-            @RequestPart("data") @Valid ProductRequestDTO request,
+            @RequestPart("data") String data,
             @RequestPart(value = "image", required = false) MultipartFile image) {
+        ProductRequestDTO request;
+        try {
+            request = objectMapper.readValue(data, ProductRequestDTO.class);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new BadRequestException("Invalid JSON in 'data' part: " + e.getOriginalMessage());
+        }
+
+        Set<ConstraintViolation<ProductRequestDTO>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            String msg = violations.stream()
+                    .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                    .collect(Collectors.joining("; "));
+            throw new BadRequestException(msg);
+        }
+
         ProductResponseDTO product = productService.createProduct(request, image);
         return ResponseEntity.ok(product);
     }

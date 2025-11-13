@@ -4,6 +4,8 @@ import com.example.demo.dto.request.ProductRequestDTO;
 import com.example.demo.dto.response.ProductResponseDTO;
 import com.example.demo.entity.Product;
 import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.exception.BadRequestException;
+import com.example.demo.exception.InternalServerErrorException;
 import com.example.demo.repository.ProductRepository;
 import com.example.demo.repository.ProductInvoiceRepository;
 import com.example.demo.service.ProductService;
@@ -68,14 +70,24 @@ public class ProductServiceImpl implements ProductService {
         product.setCurrency("COIN");
         product.setTotalStock(request.getTotalStock());
 
-        String imageUrl = request.getImageUrl();
-        if ((imageUrl == null || imageUrl.isBlank()) && image != null && !image.isEmpty()) {
+        String imageUrl;
+        if (image != null && !image.isEmpty()) {
+            String contentType = image.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                throw new BadRequestException("Invalid image file type");
+            }
+            if (image.getSize() <= 0) {
+                throw new BadRequestException("Empty image file");
+            }
             try {
                 imageUrl = cloudinaryService.uploadFile(image);
             } catch (java.io.IOException e) {
-                throw new RuntimeException("Failed to upload product image: " + e.getMessage());
+                throw new InternalServerErrorException("Failed to upload product image", e);
             }
+        } else {
+            imageUrl = request.getImageUrl();
         }
+
         product.setImageUrl(imageUrl);
         product.setIsActive(true);
         product.setCreatedAt(OffsetDateTime.now());
