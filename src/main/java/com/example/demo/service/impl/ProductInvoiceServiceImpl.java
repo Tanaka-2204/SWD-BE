@@ -158,7 +158,7 @@ public class ProductInvoiceServiceImpl implements ProductInvoiceService {
     @Transactional(readOnly = true)
     public Map<String, Object> getInvoiceStats() {
         List<Object[]> statsResults = productInvoiceRepository.getInvoiceStats();
-        List<Object[]> topProductsResults = productInvoiceRepository.getTopProducts();
+        List<Object[]> topProductsResults = productInvoiceRepository.findDeliveredStats(org.springframework.data.domain.PageRequest.of(0, 10));
 
         Long totalRedeems = 0L;
         BigDecimal totalCoinsSpent = BigDecimal.ZERO;
@@ -170,12 +170,12 @@ public class ProductInvoiceServiceImpl implements ProductInvoiceService {
         }
 
         List<Map<String, Object>> topProducts = topProductsResults.stream()
-                .map(row -> {
-                    Map<String, Object> map = new java.util.HashMap<>();
-                    map.put("title", (String) row[0]);
-                    map.put("count", ((Number) row[1]).longValue());
-                    return map;
-                })
+                .map(row -> Map.of(
+                        "productId", row[0],
+                        "title", row[1],
+                        "totalRedeem", ((Number) row[2]).longValue(),
+                        "totalCoins", row[3]
+                ))
                 .collect(Collectors.toList());
 
         return Map.of(

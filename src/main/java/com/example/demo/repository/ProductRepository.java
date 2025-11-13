@@ -28,10 +28,6 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     @Query("SELECT p FROM Product p WHERE p.isActive = true ORDER BY p.totalStock ASC")
     List<Product> findLowStockProducts();
 
-    @Query("SELECT new map(p.id as productId, p.title as title, COUNT(pi.id) as redeemCount) " +
-           "FROM Product p LEFT JOIN ProductInvoice pi ON p.id = pi.product.id " +
-           "WHERE pi.status = 'DELIVERED' " +
-           "GROUP BY p.id, p.title " +
-           "ORDER BY COUNT(pi.id) DESC")
-    List<Object[]> findTopProducts(Pageable pageable);
+    @Query("SELECT p FROM Product p WHERE p.isActive = true AND p.totalStock < :threshold ORDER BY p.totalStock ASC")
+    List<Product> findLowStockProductsBelow(@Param("threshold") Integer threshold);
 }

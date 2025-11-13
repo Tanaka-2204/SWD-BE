@@ -24,7 +24,15 @@ public interface ProductInvoiceRepository extends JpaRepository<ProductInvoice, 
     @Query("SELECT COUNT(pi), COALESCE(SUM(pi.totalCost), 0) FROM ProductInvoice pi")
     List<Object[]> getInvoiceStats();
 
-    @Query("SELECT p.title, COUNT(pi) FROM ProductInvoice pi JOIN pi.product p " +
-           "GROUP BY p.title ORDER BY COUNT(pi) DESC")
-    List<Object[]> getTopProducts();
+    @Query("SELECT p.id, p.title, COUNT(pi.id) AS totalRedeem, COALESCE(SUM(pi.totalCost),0) AS totalCoins " +
+           "FROM ProductInvoice pi JOIN pi.product p " +
+           "WHERE pi.status = 'DELIVERED' " +
+           "GROUP BY p.id, p.title " +
+           "ORDER BY totalRedeem DESC")
+    List<Object[]> findDeliveredStats(org.springframework.data.domain.Pageable pageable);
+
+    long countByStatus(String status);
+
+    @Query("SELECT COALESCE(SUM(pi.totalCost),0) FROM ProductInvoice pi WHERE pi.status = 'DELIVERED'")
+    java.math.BigDecimal sumDeliveredCoins();
 }

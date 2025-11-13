@@ -9,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 // import org.springframework.web.bind.annotation.ResponseBody; // (Không cần @ResponseBody nếu dùng ResponseEntity)
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import java.util.stream.Collectors;
 
@@ -71,6 +72,16 @@ public class GlobalExceptionHandler {
         ErrorResponseDTO response = new ErrorResponseDTO(
             HttpStatus.BAD_REQUEST.value(), 
             errorMessage
+        );
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMessageNotReadable(HttpMessageNotReadableException ex) {
+        logger.warn("Malformed request body: {}", ex.getMessage());
+        ErrorResponseDTO response = new ErrorResponseDTO(
+            HttpStatus.BAD_REQUEST.value(),
+            "Invalid request body. Ensure 'data' part is application/json and fields are correct."
         );
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }

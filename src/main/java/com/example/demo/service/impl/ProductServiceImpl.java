@@ -4,8 +4,13 @@ import com.example.demo.dto.request.ProductRequestDTO;
 import com.example.demo.dto.response.ProductResponseDTO;
 import com.example.demo.entity.Product;
 import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.exception.BadRequestException;
+import com.example.demo.exception.InternalServerErrorException;
 import com.example.demo.repository.ProductRepository;
+import com.example.demo.repository.ProductInvoiceRepository;
 import com.example.demo.service.ProductService;
+import com.example.demo.service.CloudinaryService;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,9 +29,13 @@ import java.util.stream.Collectors;
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
+    private final ProductInvoiceRepository productInvoiceRepository;
+    private final CloudinaryService cloudinaryService;
 
-    public ProductServiceImpl(ProductRepository productRepository) {
+    public ProductServiceImpl(ProductRepository productRepository, ProductInvoiceRepository productInvoiceRepository, CloudinaryService cloudinaryService) {
         this.productRepository = productRepository;
+        this.productInvoiceRepository = productInvoiceRepository;
+        this.cloudinaryService = cloudinaryService;
     }
 
     @Override
@@ -52,7 +61,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
-    public ProductResponseDTO createProduct(ProductRequestDTO request) {
+    public ProductResponseDTO createProduct(ProductRequestDTO request, MultipartFile image) {
         Product product = new Product();
         product.setType(request.getType());
         product.setTitle(request.getTitle());
@@ -60,7 +69,26 @@ public class ProductServiceImpl implements ProductService {
         product.setUnitCost(request.getUnitCost());
         product.setCurrency("COIN");
         product.setTotalStock(request.getTotalStock());
-        product.setImageUrl(request.getImageUrl());
+
+        String imageUrl;
+        if (image != null && !image.isEmpty()) {
+            String contentType = image.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                throw new BadRequestException("Invalid image file type");
+            }
+            if (image.getSize() <= 0) {
+                throw new BadRequestException("Empty image file");
+            }
+            try {
+                imageUrl = cloudinaryService.uploadFile(image);
+            } catch (java.io.IOException e) {
+                throw new InternalServerErrorException("Failed to upload product image", e);
+            }
+        } else {
+            imageUrl = request.getImageUrl();
+        }
+
+        product.setImageUrl(imageUrl);
         product.setIsActive(true);
         product.setCreatedAt(OffsetDateTime.now());
 
@@ -98,12 +126,13 @@ public class ProductServiceImpl implements ProductService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getTopProducts() {
         Pageable pageable = PageRequest.of(0, 10);
-        List<Object[]> results = productRepository.findTopProducts(pageable);
+        List<Object[]> results = productInvoiceRepository.findDeliveredStats(pageable);
         return results.stream()
                 .map(row -> Map.of(
                         "productId", row[0],
                         "title", row[1],
-                        "redeemCount", row[2]
+                        "totalRedeem", row[2],
+                        "totalCoins", row[3]
                 ))
                 .collect(Collectors.toList());
     }
