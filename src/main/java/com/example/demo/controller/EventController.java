@@ -204,6 +204,44 @@ public class EventController {
         return ResponseEntity.ok(new PageResponseDTO<>(feedbackPage));
     }
 
+    @Operation(summary = "Student updates their own feedback",
+               description = "Cho phép sinh viên cập nhật rating hoặc comment họ đã gửi trước đó.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Cập nhật feedback thành công"),
+        @ApiResponse(responseCode = "403", description = "Forbidden: Không phải chủ sở hữu của feedback này"),
+        @ApiResponse(responseCode = "404", description = "Không tìm thấy feedback")
+    })
+    @PutMapping("/feedback/{feedbackId}")
+    @PreAuthorize("isAuthenticated()")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<FeedbackResponseDTO> updateMyFeedback(
+            @Parameter(description = "ID của feedback cần cập nhật") @PathVariable UUID feedbackId,
+            @Valid @RequestBody FeedbackRequestDTO requestDTO,
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal) {
+        
+        FeedbackResponseDTO updatedFeedback = feedbackService.updateFeedback(feedbackId, requestDTO, principal);
+        return ResponseEntity.ok(updatedFeedback);
+    }
+
+    // === API MỚI: XÓA FEEDBACK ===
+    @Operation(summary = "Student deletes their own feedback",
+               description = "Cho phép sinh viên xóa/thu hồi feedback của họ.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "Xóa feedback thành công"),
+        @ApiResponse(responseCode = "403", description = "Forbidden: Không phải chủ sở hữu của feedback này"),
+        @ApiResponse(responseCode = "404", description = "Không tìm thấy feedback")
+    })
+    @DeleteMapping("/feedback/{feedbackId}")
+    @PreAuthorize("isAuthenticated()")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<Void> deleteMyFeedback(
+            @Parameter(description = "ID của feedback cần xóa") @PathVariable UUID feedbackId,
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal) {
+        
+        feedbackService.deleteFeedback(feedbackId, principal);
+        return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "Finalize event and payout rewards (by PARTNERS/Admin)")
     @PostMapping("/{eventId}/finalize")
     @PreAuthorize("hasRole('ADMIN') or hasRole('PARTNERS')")

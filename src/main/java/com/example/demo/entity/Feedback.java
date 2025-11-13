@@ -34,7 +34,7 @@ public class Feedback {
     @Column(name = "rating")
     private Short rating;
 
-    @Column(name = "comments") // Loại bỏ length
+    @Column(name = "comments")
     private String comments;
 
     @Size(max = 30)
