@@ -18,4 +18,6 @@ public interface FeedbackService {
     FeedbackResponseDTO updateFeedback(UUID feedbackId, FeedbackRequestDTO requestDTO, AuthPrincipal principal);
 
     void deleteFeedback(UUID feedbackId, AuthPrincipal principal);
+
+    Page<FeedbackResponseDTO> getMyFeedback(AuthPrincipal principal, Pageable pageable);
 }

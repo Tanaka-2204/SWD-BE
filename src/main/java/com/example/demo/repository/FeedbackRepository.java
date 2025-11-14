@@ -30,4 +30,7 @@ public interface FeedbackRepository extends JpaRepository<Feedback, UUID> {
     @Override
     @EntityGraph(attributePaths = {"student", "event"})
     Page<Feedback> findAll(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"student", "event"})
+    Page<Feedback> findByStudentId(UUID studentId, Pageable pageable);
 }

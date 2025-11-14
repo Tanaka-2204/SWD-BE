@@ -204,6 +204,25 @@ public class EventController {
         return ResponseEntity.ok(new PageResponseDTO<>(feedbackPage));
     }
 
+    @Operation(summary = "Student gets all their submitted feedback",
+               description = "Lấy lịch sử feedback (phân trang) của sinh viên đang đăng nhập.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Lấy lịch sử feedback thành công"),
+        @ApiResponse(responseCode = "403", description = "Chỉ sinh viên mới có thể dùng API này")
+    })
+    @GetMapping("/feedback/me") 
+    @PreAuthorize("isAuthenticated()")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<PageResponseDTO<FeedbackResponseDTO>> getMyFeedbackHistory(
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthPrincipal principal,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+        Pageable pageable = createPageable(page, size, sort, "createdAt"); 
+        Page<FeedbackResponseDTO> feedbackPage = feedbackService.getMyFeedback(principal, pageable);
+        return ResponseEntity.ok(new PageResponseDTO<>(feedbackPage));
+    }
+
     @Operation(summary = "Student updates their own feedback",
                description = "Cho phép sinh viên cập nhật rating hoặc comment họ đã gửi trước đó.")
     @ApiResponses({

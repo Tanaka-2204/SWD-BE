@@ -86,6 +86,19 @@ public class FeedbackServiceImpl implements FeedbackService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<FeedbackResponseDTO> getMyFeedback(AuthPrincipal principal, Pageable pageable) {
+        // 1. Lấy ID sinh viên từ token
+        UUID studentId = getStudentIdFromPrincipal(principal);
+
+        // 2. Gọi hàm repository mới (đã có @EntityGraph)
+        Page<Feedback> feedbackPage = feedbackRepository.findByStudentId(studentId, pageable);
+
+        // 3. Chuyển đổi sang DTO
+        return feedbackPage.map(this::convertToDTO);
+    }
+    
+    @Override
     @Transactional
     public FeedbackResponseDTO updateFeedback(UUID feedbackId, FeedbackRequestDTO requestDTO, AuthPrincipal principal) {
         UUID studentId = getStudentIdFromPrincipal(principal);
