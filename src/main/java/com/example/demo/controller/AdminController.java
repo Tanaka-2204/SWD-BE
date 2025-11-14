@@ -9,6 +9,8 @@ import com.example.demo.dto.request.UniversityRequestDTO;
 import com.example.demo.dto.response.UniversityResponseDTO;
 import com.example.demo.service.StudentService;
 import com.example.demo.service.UniversityService;
+import com.example.demo.service.ProductInvoiceService;
+import com.example.demo.dto.response.ProductInvoiceResponseDTO;
 import com.example.demo.dto.response.EventCategoryResponseDTO;
 import com.example.demo.dto.response.FeedbackResponseDTO;
 import com.example.demo.dto.response.PageResponseDTO;
@@ -51,12 +53,13 @@ public class AdminController {
     private final StudentService studentService;
     private final UniversityService universityService;
     private final FeedbackService feedbackService;
+    private final ProductInvoiceService productInvoiceService;
 
     public AdminController(PartnerService partnerService,
             WalletService walletService,
             EventCategoryService eventCategoryService,
             EventService eventService,
-            StudentService studentService, UniversityService universityService, FeedbackService feedbackService) {
+            StudentService studentService, UniversityService universityService, FeedbackService feedbackService, ProductInvoiceService productInvoiceService) {
         this.partnerService = partnerService;
         this.walletService = walletService;
         this.eventCategoryService = eventCategoryService;
@@ -64,6 +67,7 @@ public class AdminController {
         this.studentService = studentService;
         this.universityService = universityService;
         this.feedbackService = feedbackService;
+        this.productInvoiceService = productInvoiceService;
     }
 
     // ===================================
@@ -270,6 +274,19 @@ public class AdminController {
         return ResponseEntity.ok(approvedEvent);
     }
 
+    @Operation(summary = "Admin gets ALL invoices", description = "Lấy danh sách tất cả hóa đơn đổi quà trong hệ thống (phân trang).")
+    @ApiResponse(responseCode = "200", description = "Lấy danh sách hóa đơn thành công")
+    @GetMapping("/invoices")
+    public ResponseEntity<PageResponseDTO<ProductInvoiceResponseDTO>> getAllSystemInvoices(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+        
+        Pageable pageable = createPageable(page, size, sort);
+        Page<ProductInvoiceResponseDTO> invoicePage = productInvoiceService.getAllInvoices(pageable);
+        
+        return ResponseEntity.ok(new PageResponseDTO<>(invoicePage));
+    }
     private Pageable createPageable(int page, int size, String sort) {
         int pageIndex = page > 0 ? page - 1 : 0; // Chuyển 1-based (FE) về 0-based (Spring)
 

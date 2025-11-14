@@ -4,6 +4,7 @@ import com.example.demo.dto.request.ProductInvoiceRequestDTO;
 import com.example.demo.dto.response.ProductInvoiceResponseDTO;
 import com.example.demo.dto.response.ProductResponseDTO;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.UUID;
 import java.util.Map;
 
@@ -20,4 +21,6 @@ public interface ProductInvoiceService {
     Page<ProductInvoiceResponseDTO> getStudentInvoices(UUID studentId, String status, String sortBy, String order, Integer limit, Integer offset);
 
     Map<String, Object> getInvoiceStats();
+
+    Page<ProductInvoiceResponseDTO> getAllInvoices(Pageable pageable);
 }

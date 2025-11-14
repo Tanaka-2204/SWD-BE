@@ -196,6 +196,13 @@ public class ProductInvoiceServiceImpl implements ProductInvoiceService {
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductInvoiceResponseDTO> getAllInvoices(Pageable pageable) {
+        Page<ProductInvoice> invoicePage = productInvoiceRepository.findAll(pageable);
+        return invoicePage.map(this::convertToInvoiceDTO);
+    }
+
     private ProductResponseDTO convertProductToDTO(Product product) {
         ProductResponseDTO dto = new ProductResponseDTO();
         dto.setId(product.getId());
